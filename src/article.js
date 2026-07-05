@@ -43,7 +43,26 @@ async function fetchPage(url) {
     e.status = 502;
     throw e;
   }
+  // A silently-followed redirect to /inloggen returns 200 with the login page —
+  // without this check we'd bind the login page as if it were the article.
+  if (landedOnLogin(res)) {
+    const e = new Error(
+      'Geen toegang tot dit artikel — De Correspondent stuurde de loginpagina ' +
+        'terug. Sessie ongeldig: controleer DC_EMAIL/DC_PASSWORD (of DC_COOKIE).'
+    );
+    e.status = 502;
+    throw e;
+  }
   return res.text();
+}
+
+// Did we end up on the login page after following redirects?
+function landedOnLogin(res) {
+  try {
+    return new URL(res.url).pathname.startsWith('/inloggen');
+  } catch {
+    return false;
+  }
 }
 
 function extract(html, url) {
