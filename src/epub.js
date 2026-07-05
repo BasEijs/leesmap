@@ -1,0 +1,89 @@
+// Builds EPUB files from prepared chapters. We target EPUB 2, which the X4 /
+// CrossPoint renders most reliably, and ship deliberately plain CSS so it
+// reads well on a small greyscale panel without fighting the reader's own
+// typography settings.
+
+import epubPkg from 'epub-gen-memory';
+const epub = epubPkg.default ?? epubPkg; // CJS/ESM interop
+
+const EINK_CSS = `
+  body { font-family: serif; line-height: 1.5; margin: 0; }
+  h1 { font-size: 1.4em; line-height: 1.25; margin: 0 0 0.6em; }
+  h2 { font-size: 1.15em; margin: 1.2em 0 0.4em; }
+  h3 { font-size: 1.05em; margin: 1em 0 0.3em; }
+  p { margin: 0 0 0.8em; text-align: left; }
+  a { color: inherit; text-decoration: underline; }
+  blockquote { margin: 0.8em 1em; font-style: italic; }
+  figure { margin: 1em 0; }
+  img { max-width: 100%; height: auto; }
+  figcaption { font-size: 0.85em; font-style: italic; margin-top: 0.3em; }
+  .dc-byline { font-style: italic; margin: 0 0 1em; }
+  .dc-source { font-size: 0.8em; margin-top: 1.5em; }
+`;
+
+function slug(s) {
+  return (s || 'artikel')
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[^\w\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+    .slice(0, 60) || 'artikel';
+}
+
+function chapterHtml(ch) {
+  const byline = ch.author ? `<p class="dc-byline">${ch.author}</p>` : '';
+  const source = ch.sourceUrl
+    ? `<p class="dc-source">Bron: <a href="${ch.sourceUrl}">De Correspondent</a></p>`
+    : '';
+  return `${byline}${ch.content}${source}`;
+}
+
+async function render(options, chapters) {
+  return epub(
+    {
+      lang: 'nl',
+      tocTitle: 'Inhoud',
+      publisher: 'De Correspondent',
+      css: EINK_CSS,
+      ignoreFailedDownloads: true,
+      ...options,
+    },
+    chapters.map((ch) => ({
+      title: ch.title,
+      author: ch.author || undefined,
+      content: chapterHtml(ch),
+    })),
+    2 // EPUB version 2
+  );
+}
+
+// One article -> one EPUB.
+export async function buildSingle(chapter) {
+  const buffer = await render(
+    {
+      title: chapter.title,
+      author: chapter.author || 'De Correspondent',
+      description: chapter.excerpt,
+      // Single article: the chapter title would just repeat the book title.
+      prependChapterTitles: false,
+    },
+    [chapter]
+  );
+  return { buffer, filename: `dc-${slug(chapter.title)}.epub` };
+}
+
+// Several articles -> one EPUB, one chapter each, with a table of contents.
+export async function buildBundle(chapters, { title } = {}) {
+  const today = new Date().toISOString().slice(0, 10);
+  const bookTitle = title || `De Correspondent — selectie ${today}`;
+  const buffer = await render(
+    {
+      title: bookTitle,
+      author: 'De Correspondent',
+      description: `Selectie van ${chapters.length} artikelen.`,
+    },
+    chapters
+  );
+  return { buffer, filename: `dc-selectie-${today}.epub` };
+}

@@ -1,0 +1,22 @@
+{
+  "name": "leesmap",
+  "version": "1.0.0",
+  "description": "Pick De Correspondent articles and bind them into EPUBs for a CrossPoint/Xteink X4 e-reader.",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@mozilla/readability": "^0.6.0",
+    "epub-gen-memory": "^1.1.2",
+    "express": "^5.2.1",
+    "jsdom": "^29.1.1",
+    "rss-parser": "^3.13.0"
+  }
+}

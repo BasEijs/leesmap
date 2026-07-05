@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Leesmap — De Correspondent → X4</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<header class="masthead">
+  <div class="mast-left">
+    <p class="eyebrow">Bindery · decorrespondent.nl → Xteink&nbsp;X4</p>
+    <h1>Leesmap</h1>
+    <p class="lede">Kies verhalen, bind ze tot een EPUB en stuur ze naar je reader.</p>
+  </div>
+  <div class="statusbar" id="statusbar">
+    <button class="chip" id="chip-device" title="Reader-status">
+      <span class="dot" id="dot-device"></span><span id="lbl-device">reader ?</span>
+    </button>
+    <span class="chip" id="chip-cookie"><span class="dot" id="dot-cookie"></span>cookie</span>
+    <button class="chip ghost" id="btn-settings">instellingen</button>
+  </div>
+</header>
+
+<main>
+  <!-- FEED -->
+  <section class="feed" aria-label="Feed">
+    <div class="feed-head">
+      <select id="feed-select" aria-label="Kies feed"></select>
+      <input id="feed-url" type="url" placeholder="…of plak een feed-URL" />
+      <button id="btn-load">Laad</button>
+    </div>
+    <div class="feed-tools">
+      <button class="link" id="sel-all">alles</button>
+      <button class="link" id="sel-none">niets</button>
+      <span class="muted" id="feed-meta"></span>
+    </div>
+    <ol class="articles" id="articles"></ol>
+    <p class="empty" id="feed-empty">Nog geen feed geladen.</p>
+  </section>
+
+  <!-- GALLEY -->
+  <aside class="galley" aria-label="Galei">
+    <div class="galley-count">
+      <span class="num" id="sel-count">0</span>
+      <span class="num-lbl">geselecteerd</span>
+    </div>
+
+    <fieldset class="opt">
+      <legend>Vorm</legend>
+      <label><input type="radio" name="mode" value="bundle" checked /> Bundel <small>één EPUB, per artikel een hoofdstuk</small></label>
+      <label><input type="radio" name="mode" value="single" /> Per artikel <small>losse EPUB per verhaal</small></label>
+    </fieldset>
+
+    <fieldset class="opt">
+      <legend>Beeld</legend>
+      <label><input type="radio" name="images" value="strip" checked /> Alleen tekst <small>klein, scherp op e-ink</small></label>
+      <label><input type="radio" name="images" value="embed" /> Met beeld <small>afbeeldingen insluiten</small></label>
+    </fieldset>
+
+    <input id="bundle-title" class="title-in" type="text" placeholder="Titel van de bundel (optioneel)" />
+
+    <div class="actions">
+      <button class="primary" id="btn-send">Verstuur naar X4</button>
+      <button class="secondary" id="btn-download">Download .epub</button>
+    </div>
+
+    <div class="console" id="console" aria-live="polite">
+      <p class="console-idle">De galei-log verschijnt hier.</p>
+    </div>
+  </aside>
+</main>
+
+<!-- SETTINGS DRAWER -->
+<div class="drawer-scrim" id="scrim" hidden></div>
+<div class="drawer" id="drawer" hidden aria-label="Instellingen">
+  <div class="drawer-head"><h2>Instellingen</h2><button class="link" id="btn-close">sluit</button></div>
+
+  <label class="field">Reader-IP (CrossPoint)
+    <div class="row">
+      <input id="device-ip" type="text" placeholder="192.168.4.1" />
+      <button id="btn-test">Test</button>
+    </div>
+    <small class="muted" id="device-detail">Eigen hotspot: 192.168.4.1 · crosspoint.local. Op je wifi: het IP dat de reader kreeg.</small>
+  </label>
+
+  <div class="field">Opgeslagen feeds
+    <ul class="saved-feeds" id="saved-feeds"></ul>
+    <div class="row">
+      <input id="nf-name" type="text" placeholder="naam" />
+      <input id="nf-url" type="url" placeholder="feed-URL" />
+      <button id="nf-add">+</button>
+    </div>
+  </div>
+
+  <p class="muted small">De sessie-cookie en je persoonlijke feed staan in de server-omgeving (env), niet hier — houd deze web-UI op je LAN of Tailscale.</p>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
