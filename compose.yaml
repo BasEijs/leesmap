@@ -1,10 +1,10 @@
 services:
   leesmap:
     build: .
-    # Explicit image tag. Komodo's deploy reuses an existing image and won't
-    # rebuild on source-only changes; bump this tag (v1 -> v2 -> …) whenever
-    # src/ changes so `compose up` has no cached image and must rebuild.
-    image: leesmap:v1
+    # Komodo deploys with `docker compose up -d` (no --build), which otherwise
+    # reuses the cached image and never picks up src/ changes. pull_policy: build
+    # tells compose to (re)build the image from source on every deploy.
+    pull_policy: build
     container_name: leesmap
     restart: unless-stopped
     ports:
