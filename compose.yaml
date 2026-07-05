@@ -30,3 +30,7 @@ services:
     # To auto-send, the container must reach the reader's IP. On your home WiFi
     # a normal bridge network reaches LAN hosts fine. If that ever fails, try:
     # network_mode: host
+networks:
+  default:
+    external: true
+    name: ubuntu_network
