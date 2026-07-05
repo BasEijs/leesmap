@@ -156,6 +156,22 @@ async function handleImages(htmlContent, { mode, articleUrl, mediaBase }) {
   return doc.body.innerHTML;
 }
 
+// Lightweight metadata for a single article URL, shaped like a feed item so
+// the UI can list a pasted article link without RSS. No image handling — we
+// only need title/author/excerpt for the list.
+export async function articleToFeedItem(url) {
+  const page = await fetchPage(url);
+  const art = extract(page, url);
+  return {
+    title: art.title,
+    author: art.byline,
+    link: url,
+    date: '',
+    snippet: (art.excerpt || '').replace(/\s+/g, ' ').trim().slice(0, 320),
+    id: url,
+  };
+}
+
 // Full pipeline for one URL. Returns a chapter-ready object.
 export async function articleToChapter(url, { images, mediaBase }) {
   const page = await fetchPage(url);

@@ -95,6 +95,7 @@ async function loadFeed() {
   const url = $('#feed-url').value.trim() || $('#feed-select').value;
   $('#feed-empty').textContent = 'Feed laden…';
   $('#feed-empty').hidden = false;
+  $('#feed-meta').textContent = '';
   $('#articles').innerHTML = '';
   try {
     const q = url ? '?url=' + encodeURIComponent(url) : '';

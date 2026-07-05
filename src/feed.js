@@ -6,6 +6,19 @@
 import Parser from 'rss-parser';
 import { env } from './config.js';
 import { fetchWithSession } from './session.js';
+import { articleToFeedItem } from './article.js';
+
+// A De Correspondent article URL looks like /<id>/<slug> (e.g. /17097/albanie-…),
+// whereas a feed URL lives under /rss. If someone pastes an article link into
+// the feed box, list just that one article instead of feeding HTML to the XML
+// parser (which fails with "Unexpected close tag").
+function isArticleUrl(url) {
+  try {
+    return /^\/\d+\//.test(new URL(url).pathname);
+  } catch {
+    return false;
+  }
+}
 
 // We fetch the feed ourselves (through session.js, so the cookie stays valid)
 // and hand the XML to rss-parser, instead of letting it fetch with a cookie
@@ -27,6 +40,11 @@ export async function parseFeed(url) {
     const e = new Error('No feed URL configured. Set DC_RSS_URL or pass ?url=');
     e.status = 400;
     throw e;
+  }
+
+  if (isArticleUrl(feedUrl)) {
+    const item = await articleToFeedItem(feedUrl);
+    return { title: item.title, url: feedUrl, items: [item] };
   }
 
   const res = await fetchWithSession(feedUrl, {
