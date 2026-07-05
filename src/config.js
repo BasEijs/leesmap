@@ -9,8 +9,12 @@ export const env = {
   port: Number(process.env.PORT) || 8080,
   // Your personal De Correspondent RSS feed (all publications).
   primaryFeedUrl: process.env.DC_RSS_URL || '',
-  // The full `Cookie:` header value copied from a logged-in browser session.
+  // Manual fallback: the full `Cookie:` header value copied from a logged-in
+  // browser session. If set, it wins over automatic login (see session.js).
   cookie: process.env.DC_COOKIE || '',
+  // Preferred: log in automatically with these. Never commit them.
+  email: process.env.DC_EMAIL || '',
+  password: process.env.DC_PASSWORD || '',
   userAgent:
     process.env.USER_AGENT ||
     'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Leesmap/1.0',
