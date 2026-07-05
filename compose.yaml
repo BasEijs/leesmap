@@ -1,8 +1,10 @@
 services:
   leesmap:
     build: .
-    # After you push to your registry you can swap the build for:
-    # image: ghcr.io/<you>/leesmap:latest
+    # Explicit image tag. Komodo's deploy reuses an existing image and won't
+    # rebuild on source-only changes; bump this tag (v1 -> v2 -> …) whenever
+    # src/ changes so `compose up` has no cached image and must rebuild.
+    image: leesmap:v1
     container_name: leesmap
     restart: unless-stopped
     ports:
