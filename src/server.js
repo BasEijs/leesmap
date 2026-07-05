@@ -41,7 +41,8 @@ app.get('/api/config', (req, res) => {
     deviceIp: s.deviceIp,
     feeds: s.feeds,
     primaryFeedConfigured: Boolean(env.primaryFeedUrl),
-    cookieConfigured: Boolean(env.cookie),
+    // Authenticated either via the manual cookie or automatic email login.
+    cookieConfigured: Boolean(env.cookie || (env.email && env.password)),
   });
 });
 
@@ -172,5 +173,6 @@ app.use(express.static(join(__dirname, 'public')));
 app.listen(env.port, () => {
   console.log(`Leesmap running on http://0.0.0.0:${env.port}`);
   if (!env.primaryFeedUrl) console.warn('  ! DC_RSS_URL not set');
-  if (!env.cookie) console.warn('  ! DC_COOKIE not set (full text will 401/403)');
+  if (!env.cookie && !(env.email && env.password))
+    console.warn('  ! No DC auth: set DC_EMAIL + DC_PASSWORD (or DC_COOKIE) — full text will fail');
 });

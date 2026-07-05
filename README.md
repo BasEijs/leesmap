@@ -13,7 +13,7 @@ the EPUBs for yourself; don't redistribute them.
 ## How it works
 
 ```
-  RSS feed ──▶ pick articles ──▶ fetch each page (your cookie)
+  RSS feed ──▶ pick articles ──▶ fetch each page (your session)
                                         │
                                    Readability
                                    (clean text)
@@ -25,7 +25,8 @@ the EPUBs for yourself; don't redistribute them.
 - **Listing** uses your De Correspondent RSS feed (all-articles, or a
   correspondent/collection feed). The feed only carries excerpts.
 - **Full text** is fetched per article from the article page using your
-  logged-in session cookie, then cleaned with Mozilla Readability.
+  logged-in session (managed in `session.js`), then cleaned with Mozilla
+  Readability.
 - **Binding** produces an EPUB 2 (the format CrossPoint renders most reliably)
   with plain, e-ink-friendly CSS. Either one EPUB per article, or a bundle with
   one chapter per article and a table of contents.
@@ -40,9 +41,11 @@ the EPUBs for yourself; don't redistribute them.
 
 - **Personal RSS feed URL** — log in at <https://decorrespondent.nl/rss> and copy
   the "alle publicaties" feed link.
-- **Session cookie** — in your browser on decorrespondent.nl, open
-  DevTools → Network → click any request → under Request Headers copy the entire
-  `Cookie:` value. That's what lets the tool read full articles as you.
+- **Login** — your De Correspondent **email + password** (`DC_EMAIL` /
+  `DC_PASSWORD`). The app logs in for you, caches the session on the `/data`
+  volume, and re-logs-in automatically when it expires — no more pasting cookies.
+  (A manual `DC_COOKIE` still works as a fallback if you'd rather; see
+  `.env.example`.)
 
 Copy `.env.example` to `.env` and fill both in, plus your reader's IP.
 
@@ -62,7 +65,7 @@ Prefer running it directly?
 
 ```bash
 npm install
-DC_RSS_URL=... DC_COOKIE=... X4_IP=192.168.4.1 npm start
+DC_RSS_URL=... DC_EMAIL=... DC_PASSWORD=... X4_IP=192.168.4.1 npm start
 ```
 
 ---
@@ -99,9 +102,11 @@ image-heavy books get much larger — fine on the 32 GB card, slower to open.
 
 ## Troubleshooting
 
-- **`HTTP 401/403` when fetching an article** — your cookie expired. Grab a fresh
-  `Cookie:` value from the browser and update `DC_COOKIE` (then
-  `docker compose up -d`).
+- **`HTTP 401/403` when fetching an article** — with `DC_EMAIL`/`DC_PASSWORD` set
+  the app re-logs-in and retries automatically; a persistent 401/403 means login
+  itself failed (check the galei-log / container logs for the reason — wrong
+  credentials, a changed login form, or a 2FA prompt). On the `DC_COOKIE`
+  fallback it just means the cookie expired — grab a fresh one.
 - **`422 kon de hoofdtekst niet uit deze pagina halen`** — Readability found too
   little text. Usually a cookie/access issue; occasionally a page that renders
   its body with JavaScript. If it turns out De Correspondent needs JS to render
@@ -110,7 +115,8 @@ image-heavy books get much larger — fine on the 32 GB card, slower to open.
 - **Upload fails / reader offline** — confirm the reader is awake, on WiFi, and
   that the IP in **instellingen** is right. The status chip probes
   `GET /api/files?path=/`.
-- **cookie dot is red** — `DC_COOKIE` isn't set in the environment.
+- **cookie dot is red** — no De Correspondent auth configured: set
+  `DC_EMAIL` + `DC_PASSWORD` (or `DC_COOKIE`) in the environment.
 
 ---
 
@@ -129,6 +135,7 @@ image-heavy books get much larger — fine on the 32 GB card, slower to open.
 src/
   server.js   HTTP API + static UI + /media route
   config.js   env + persisted settings (/data)
+  session.js  De Correspondent login + session cookie (auto-refresh, /data)
   feed.js     RSS parsing
   article.js  authenticated fetch + Readability + image handling
   epub.js     EPUB 2 building (single + bundle)
@@ -139,15 +146,15 @@ src/
 
 ## Roadmap / easy extensions
 
-- **Auto-login** to refresh the session automatically instead of pasting a cookie.
 - **Headless-browser fetch** fallback for any JS-rendered pages.
 - **Image downscaling** to greyscale (add `sharp`) for smaller, e-ink-tuned files.
 - **KOReader-style** progress isn't needed here, but bundles could gain a cover.
 
 ## Security
 
-The server holds your De Correspondent cookie and can read your articles. Keep it
-on your LAN or Tailscale, or set `BASIC_AUTH_USER` / `BASIC_AUTH_PASS`. The
+The server holds your De Correspondent credentials (or cookie) and can read your
+articles. The session cookie is cached under `./data` (git-ignored). Keep it on
+your LAN or Tailscale, or set `BASIC_AUTH_USER` / `BASIC_AUTH_PASS`. The
 `/media` route only holds transient article images during a build and expires
 them after ten minutes.
 
