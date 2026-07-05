@@ -6,7 +6,9 @@ services:
     container_name: leesmap
     restart: unless-stopped
     ports:
-      - "8080:8080"
+      # Host port is configurable (default 8088) so it won't clash with other
+      # services; the app always listens on 8080 inside the container.
+      - "${LEESMAP_PORT:-8088}:8080"
     environment:
       # Your personal De Correspondent RSS feed (all publications).
       DC_RSS_URL: ${DC_RSS_URL}
