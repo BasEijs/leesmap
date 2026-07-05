@@ -12,8 +12,12 @@ services:
     environment:
       # Your personal De Correspondent RSS feed (all publications).
       DC_RSS_URL: ${DC_RSS_URL}
-      # The Cookie header from a logged-in decorrespondent.nl browser session.
-      DC_COOKIE: ${DC_COOKIE}
+      # Login (preferred): the app logs in and refreshes its own session.
+      DC_EMAIL: ${DC_EMAIL:-}
+      DC_PASSWORD: ${DC_PASSWORD:-}
+      # Manual cookie (fallback): overrides the login above if set. Leave blank
+      # to use DC_EMAIL/DC_PASSWORD.
+      DC_COOKIE: ${DC_COOKIE:-}
       # Reader address. On its own hotspot: 192.168.4.1. On your WiFi: its LAN IP.
       X4_IP: ${X4_IP:-192.168.4.1}
       # Optional HTTP basic auth for the UI (recommended if not behind Tailscale).
