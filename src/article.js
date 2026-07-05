@@ -10,6 +10,7 @@ import { randomUUID } from 'node:crypto';
 import { JSDOM } from 'jsdom';
 import { Readability } from '@mozilla/readability';
 import { env } from './config.js';
+import { fetchWithSession } from './session.js';
 import { put as putMedia } from './media.js';
 
 const MIN_CHARS = 250; // below this, extraction almost certainly failed
@@ -25,10 +26,10 @@ const EXT_BY_TYPE = {
 };
 
 async function fetchPage(url) {
-  const res = await fetch(url, {
-    redirect: 'follow',
+  // fetchWithSession injects the session cookie and, if it has expired,
+  // re-logs-in once and retries before this returns.
+  const res = await fetchWithSession(url, {
     headers: {
-      Cookie: env.cookie,
       'User-Agent': env.userAgent,
       Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
       'Accept-Language': 'nl,en;q=0.8',
@@ -37,7 +38,7 @@ async function fetchPage(url) {
   if (!res.ok) {
     const e = new Error(`Kon artikel niet ophalen (HTTP ${res.status}). ` +
       (res.status === 401 || res.status === 403
-        ? 'Je sessie-cookie ontbreekt of is verlopen — ververs DC_COOKIE.'
+        ? 'Inloggen bij De Correspondent lukte niet — controleer DC_EMAIL/DC_PASSWORD.'
         : ''));
     e.status = 502;
     throw e;
@@ -78,10 +79,8 @@ function absolutize(src, base) {
 }
 
 async function downloadImage(src, articleUrl) {
-  const res = await fetch(src, {
-    redirect: 'follow',
+  const res = await fetchWithSession(src, {
     headers: {
-      Cookie: env.cookie,
       'User-Agent': env.userAgent,
       Referer: articleUrl,
       Accept: 'image/avif,image/webp,image/*,*/*;q=0.8',

@@ -5,14 +5,12 @@
 
 import Parser from 'rss-parser';
 import { env } from './config.js';
+import { fetchWithSession } from './session.js';
 
+// We fetch the feed ourselves (through session.js, so the cookie stays valid)
+// and hand the XML to rss-parser, instead of letting it fetch with a cookie
+// baked in at startup.
 const parser = new Parser({
-  timeout: 20000,
-  headers: {
-    Cookie: env.cookie,
-    'User-Agent': env.userAgent,
-    Accept: 'application/rss+xml, application/xml, text/xml, */*',
-  },
   customFields: {
     item: [['dc:creator', 'creator'], ['author', 'author']],
   },
@@ -31,7 +29,19 @@ export async function parseFeed(url) {
     throw e;
   }
 
-  const feed = await parser.parseURL(feedUrl);
+  const res = await fetchWithSession(feedUrl, {
+    signal: AbortSignal.timeout(20000),
+    headers: {
+      'User-Agent': env.userAgent,
+      Accept: 'application/rss+xml, application/xml, text/xml, */*',
+    },
+  });
+  if (!res.ok) {
+    const e = new Error(`Kon feed niet ophalen (HTTP ${res.status}).`);
+    e.status = 502;
+    throw e;
+  }
+  const feed = await parser.parseString(await res.text());
 
   const items = (feed.items || []).map((item) => ({
     title: (item.title || 'Zonder titel').trim(),
