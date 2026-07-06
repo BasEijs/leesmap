@@ -128,7 +128,7 @@ app.post('/api/build', async (req, res) => {
   try {
     let out;
     if (mode === 'single') {
-      const chapter = await articleToChapter(urls[0], { images, mediaBase });
+      const chapter = await articleToChapter(urls[0], { images, mediaBase, withAvatar: true });
       out = await buildSingle(chapter);
     } else {
       const chapters = [];
@@ -174,7 +174,13 @@ app.post('/api/send', async (req, res) => {
   try {
     const prepare = async (url) => {
       emit({ type: 'step', url, phase: 'fetch' });
-      const chapter = await articleToChapter(url, { images, mediaBase });
+      // Only single sends put a portrait on the cover, so only they need the
+      // extra avatar fetch.
+      const chapter = await articleToChapter(url, {
+        images,
+        mediaBase,
+        withAvatar: mode === 'single',
+      });
       emit({ type: 'step', url, phase: 'extract', title: chapter.title });
       return chapter;
     };

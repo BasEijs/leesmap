@@ -75,10 +75,14 @@ export async function buildSingle(chapter) {
       title: chapter.title,
       author: chapter.author || 'De Correspondent',
       description: chapter.excerpt,
-      cover: coverFile({
+      cover: await coverFile({
         title: chapter.title,
         subtitle: chapter.author || undefined,
         footer: dutchDate(),
+        // Single-article covers get the correspondent's round portrait (photo
+        // when we matched one, otherwise an initials monogram).
+        portrait: true,
+        avatar: chapter.avatar || undefined,
       }),
       // Single article: the chapter title would just repeat the book title.
       prependChapterTitles: false,
@@ -98,7 +102,7 @@ export async function buildBundle(chapters, { title } = {}) {
       title: bookTitle,
       author: 'De Correspondent',
       description: `Selectie van ${count} artikelen.`,
-      cover: coverFile({
+      cover: await coverFile({
         // The book title carries a machine date; the cover gets a cleaner
         // "Leesmap" wordmark with the date in the footer instead.
         title: title || 'Leesmap',

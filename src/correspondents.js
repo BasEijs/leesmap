@@ -4,7 +4,7 @@
 // so we resolve everything the grid needs straight from the feed, no scraping.
 
 import Parser from 'rss-parser';
-import { env } from './config.js';
+import { env, loadSettings } from './config.js';
 import { fetchWithSession } from './session.js';
 
 const parser = new Parser();
@@ -78,6 +78,35 @@ export async function resolveCorrespondent(slug) {
   };
   cache.set(slug, { data, ts: Date.now() });
   return data;
+}
+
+// Normalise a name for loose matching: lowercase, strip accents/punctuation,
+// collapse whitespace. "Jesse Frederik" and "Door Jésse  Frederik" both reduce
+// to a comparable form.
+function normName(s) {
+  return (s || '')
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+// Find the avatar URL for an article's byline by matching it against the saved
+// correspondents (resolved names, cached). Best-effort: returns '' when there's
+// no confident match, so the cover just falls back to a monogram.
+export async function avatarUrlForAuthor(author) {
+  const a = normName(author);
+  if (!a) return '';
+  const list = await resolveAll(loadSettings().correspondents);
+  for (const c of list) {
+    const n = normName(c.name);
+    // The correspondent's full name appears within the byline (which may carry
+    // a "Door " prefix or a co-author), and we require both name parts to be
+    // present so "Jesse" alone can't match a different Jesse.
+    if (n && n.split(' ').length >= 2 && a.includes(n) && c.avatar) return c.avatar;
+  }
+  return '';
 }
 
 // Resolve a list of slugs, keeping order and dropping ones that fail to load

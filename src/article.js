@@ -12,6 +12,7 @@ import { Readability } from '@mozilla/readability';
 import { env } from './config.js';
 import { fetchWithSession } from './session.js';
 import { put as putMedia } from './media.js';
+import { avatarUrlForAuthor } from './correspondents.js';
 
 const MIN_CHARS = 250; // below this, extraction almost certainly failed
 
@@ -172,8 +173,24 @@ export async function articleToFeedItem(url) {
   };
 }
 
+// Best-effort: the correspondent portrait for this byline, as image bytes for
+// the EPUB cover. Never throws — a missing/failed avatar just yields null and
+// the cover falls back to a monogram.
+async function authorAvatar(byline, articleUrl) {
+  try {
+    const url = await avatarUrlForAuthor(byline);
+    if (!url) return null;
+    const { buffer } = await downloadImage(url, articleUrl);
+    return buffer;
+  } catch {
+    return null;
+  }
+}
+
 // Full pipeline for one URL. Returns a chapter-ready object.
-export async function articleToChapter(url, { images, mediaBase }) {
+// `withAvatar` fetches the correspondent portrait for the cover; only the
+// single-article path needs it (a bundle cover shows no single portrait).
+export async function articleToChapter(url, { images, mediaBase, withAvatar }) {
   const page = await fetchPage(url);
   const art = extract(page, url);
   const html = await handleImages(art.html, {
@@ -187,5 +204,6 @@ export async function articleToChapter(url, { images, mediaBase }) {
     excerpt: art.excerpt,
     content: html,
     sourceUrl: url,
+    avatar: withAvatar ? await authorAvatar(art.byline, url) : null,
   };
 }
