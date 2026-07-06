@@ -4,7 +4,17 @@
 // typography settings.
 
 import epubPkg from 'epub-gen-memory';
+import { coverFile } from './cover.js';
 const epub = epubPkg.default ?? epubPkg; // CJS/ESM interop
+
+// "6 juli 2026" — a human date for the cover footer.
+function dutchDate(d = new Date()) {
+  return new Intl.DateTimeFormat('nl-NL', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  }).format(d);
+}
 
 const EINK_CSS = `
   body { font-family: serif; line-height: 1.5; margin: 0; }
@@ -65,6 +75,11 @@ export async function buildSingle(chapter) {
       title: chapter.title,
       author: chapter.author || 'De Correspondent',
       description: chapter.excerpt,
+      cover: coverFile({
+        title: chapter.title,
+        subtitle: chapter.author || undefined,
+        footer: dutchDate(),
+      }),
       // Single article: the chapter title would just repeat the book title.
       prependChapterTitles: false,
     },
@@ -77,11 +92,19 @@ export async function buildSingle(chapter) {
 export async function buildBundle(chapters, { title } = {}) {
   const today = new Date().toISOString().slice(0, 10);
   const bookTitle = title || `De Correspondent — selectie ${today}`;
+  const count = chapters.length;
   const buffer = await render(
     {
       title: bookTitle,
       author: 'De Correspondent',
-      description: `Selectie van ${chapters.length} artikelen.`,
+      description: `Selectie van ${count} artikelen.`,
+      cover: coverFile({
+        // The book title carries a machine date; the cover gets a cleaner
+        // "Leesmap" wordmark with the date in the footer instead.
+        title: title || 'Leesmap',
+        subtitle: `${count} ${count === 1 ? 'artikel' : 'artikelen'}`,
+        footer: dutchDate(),
+      }),
     },
     chapters
   );
