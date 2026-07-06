@@ -96,6 +96,62 @@ function drawAvatar(ctx, img, cx, cy, r, initials) {
   ctx.stroke();
 }
 
+// Draw a centred row of small round portraits (a selection's authors). When
+// there are more than fit, the last circle becomes a "+N" overflow chip.
+// Returns the row's height so the caller can advance below it.
+async function drawAvatarRow(ctx, portraits, cx, top) {
+  const r = 54;
+  const gap = 26;
+  const step = 2 * r + gap;
+  const MAX = 6;
+
+  let items = portraits;
+  let overflow = 0;
+  if (portraits.length > MAX) {
+    items = portraits.slice(0, MAX - 1);
+    overflow = portraits.length - items.length;
+  }
+  const n = items.length + (overflow ? 1 : 0);
+  const totalW = n * 2 * r + (n - 1) * gap;
+  let x = cx - totalW / 2 + r;
+  const cy = top + r;
+
+  for (const it of items) {
+    let img = null;
+    if (it.avatar) {
+      try {
+        img = await loadImage(it.avatar);
+      } catch {
+        img = null;
+      }
+    }
+    drawAvatar(ctx, img, x, cy, r, initialsOf(it.author));
+    x += step;
+  }
+
+  if (overflow) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(x, cy, r, 0, Math.PI * 2);
+    ctx.fillStyle = '#ececec';
+    ctx.fill();
+    ctx.restore();
+    ctx.fillStyle = MUTED;
+    ctx.font = `${Math.round(r * 0.62)}px ${BOLD}`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(`+${overflow}`, x, cy + 2);
+    ctx.textBaseline = 'alphabetic';
+    ctx.beginPath();
+    ctx.arc(x, cy, r, 0, Math.PI * 2);
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = INK;
+    ctx.stroke();
+  }
+
+  return 2 * r;
+}
+
 // Two-letter initials from a name ("Jesse Frederik" -> "JF").
 function initialsOf(name) {
   const parts = (name || '').trim().split(/\s+/).filter(Boolean);
@@ -142,8 +198,12 @@ function fitTitle(ctx, text, { maxWidth, maxLines, min, max }) {
  * @param {string} [o.subtitle] author, or e.g. "12 artikelen"
  * @param {string} [o.footer]   date line at the bottom
  * @param {Buffer} [o.avatar]   correspondent portrait bytes; drawn as a circle
- * @param {boolean}[o.portrait] force showing/hiding the portrait circle
+ * @param {boolean}[o.portrait] force showing/hiding the single portrait circle
  *                              (defaults to: show when an avatar is given)
+ * @param {{avatar?: Buffer, author?: string}[]} [o.portraits]
+ *                              multiple authors, drawn as a row of small circles
+ *                              (for selection/bundle covers); overrides the
+ *                              single portrait
  * @returns {Promise<Buffer>} PNG bytes
  */
 export async function coverImage({
@@ -153,6 +213,7 @@ export async function coverImage({
   footer,
   avatar,
   portrait,
+  portraits,
 } = {}) {
   ensureFonts();
   const canvas = createCanvas(W, H);
@@ -192,15 +253,17 @@ export async function coverImage({
     ctx.stroke();
   }
 
-  // A portrait circle is shown when the caller asks for one (single-article
-  // covers). With it, the title gets one fewer line and sits a touch higher to
-  // leave room for the avatar + author beneath it.
-  const showPortrait = portrait ?? Boolean(avatar);
+  // A single portrait (one author) or a row of portraits (a selection with
+  // several authors) sits between the title and subtitle. Either way we reserve
+  // vertical space: the title gets one fewer line and sits a touch higher.
+  const hasRow = Array.isArray(portraits) && portraits.length > 0;
+  const showPortrait = !hasRow && (portrait ?? Boolean(avatar));
+  const reserve = hasRow || showPortrait;
 
   // Title, auto-sized and centred in the upper-middle band.
   const { size, lines } = fitTitle(ctx, title || 'Zonder titel', {
     maxWidth: colW,
-    maxLines: showPortrait ? 4 : 5,
+    maxLines: reserve ? 4 : 5,
     min: 56,
     max: 118,
   });
@@ -209,15 +272,17 @@ export async function coverImage({
   ctx.textAlign = 'center';
   const lineH = size * 1.16;
   const blockH = lineH * lines.length;
-  let y = H * (showPortrait ? 0.36 : 0.42) - blockH / 2 + size;
+  let y = H * (reserve ? 0.36 : 0.42) - blockH / 2 + size;
   for (const line of lines) {
     ctx.fillText(line, cx, y);
     y += lineH;
   }
   y += 20; // gap below the title block
 
-  // Correspondent portrait, like the round avatar in the web grid.
-  if (showPortrait) {
+  // Correspondent portrait(s), like the round avatars in the web grid.
+  if (hasRow) {
+    y += (await drawAvatarRow(ctx, portraits, cx, y)) + 30;
+  } else if (showPortrait) {
     const r = 96;
     drawAvatar(ctx, avatarImg, cx, y + r, r, initialsOf(subtitle));
     y += 2 * r + 30;

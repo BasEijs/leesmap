@@ -132,7 +132,8 @@ app.post('/api/build', async (req, res) => {
       out = await buildSingle(chapter);
     } else {
       const chapters = [];
-      for (const url of urls) chapters.push(await articleToChapter(url, { images, mediaBase }));
+      for (const url of urls)
+        chapters.push(await articleToChapter(url, { images, mediaBase, withAvatar: true }));
       out = await buildBundle(chapters, { title });
     }
     res.setHeader('Content-Type', 'application/epub+zip');
@@ -174,12 +175,12 @@ app.post('/api/send', async (req, res) => {
   try {
     const prepare = async (url) => {
       emit({ type: 'step', url, phase: 'fetch' });
-      // Only single sends put a portrait on the cover, so only they need the
-      // extra avatar fetch.
+      // Both single and bundle covers show portraits (one big, or a row), so
+      // both fetch the correspondent avatar.
       const chapter = await articleToChapter(url, {
         images,
         mediaBase,
-        withAvatar: mode === 'single',
+        withAvatar: true,
       });
       emit({ type: 'step', url, phase: 'extract', title: chapter.title });
       return chapter;

@@ -97,6 +97,21 @@ export async function buildBundle(chapters, { title } = {}) {
   const today = new Date().toISOString().slice(0, 10);
   const bookTitle = title || `De Correspondent — selectie ${today}`;
   const count = chapters.length;
+
+  // The distinct authors in the selection, in first-appearance order, each with
+  // their portrait (when we matched one). The cover draws these as a row of
+  // small circles under "N artikelen".
+  const seen = new Set();
+  const portraits = [];
+  for (const ch of chapters) {
+    const author = (ch.author || '').trim();
+    if (!author) continue;
+    const key = author.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    portraits.push({ author, avatar: ch.avatar || undefined });
+  }
+
   const buffer = await render(
     {
       title: bookTitle,
@@ -108,6 +123,7 @@ export async function buildBundle(chapters, { title } = {}) {
         title: title || 'Leesmap',
         subtitle: `${count} ${count === 1 ? 'artikel' : 'artikelen'}`,
         footer: dutchDate(),
+        portraits,
       }),
     },
     chapters
