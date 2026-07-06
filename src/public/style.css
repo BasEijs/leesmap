@@ -148,7 +148,14 @@ main {
   padding: 0.4rem 0; border-top: 1px solid var(--rule);
   font-family: var(--sans); text-transform: none; letter-spacing: 0; font-size: 0.9rem;
 }
-.saved-corr button { background: none; border: none; color: var(--bad); text-decoration: underline; }
+.sc-controls { display: inline-flex; align-items: center; gap: 0.5rem; flex: none; }
+.sc-del { background: none; border: none; color: var(--bad); text-decoration: underline; }
+.sc-move {
+  background: var(--paper-2); border: 1px solid var(--rule); border-radius: 5px;
+  color: var(--ink); line-height: 1; padding: 0.15rem 0.4rem; font-size: 0.85rem;
+}
+.sc-move:hover:not(:disabled) { border-color: var(--ink); }
+.sc-move:disabled { opacity: 0.35; cursor: default; }
 .sc-id { display: inline-flex; align-items: center; gap: 0.5rem; min-width: 0; }
 .sc-id > span:last-child { overflow-wrap: break-word; }
 .corr-av-sm {

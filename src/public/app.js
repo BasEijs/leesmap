@@ -113,24 +113,63 @@ function selectGeneral() {
 function renderSavedCorr() {
   const ul = $('#saved-corr');
   ul.innerHTML = '';
-  state.correspondents.forEach((c) => {
+  const last = state.correspondents.length - 1;
+  state.correspondents.forEach((c, i) => {
     const li = document.createElement('li');
     const av = c.avatar
       ? `<img class="corr-av-sm" src="${c.avatar}" alt="" />`
       : `<span class="corr-av-sm corr-av-ph">${(c.name[0] || '?').toUpperCase()}</span>`;
     li.innerHTML = `<span class="sc-id">${av}<span>${c.name}</span></span>`;
-    const b = document.createElement('button');
-    b.textContent = 'verwijder';
-    b.onclick = async () => {
+
+    const controls = document.createElement('span');
+    controls.className = 'sc-controls';
+
+    const up = document.createElement('button');
+    up.className = 'sc-move'; up.textContent = '↑';
+    up.title = 'Naar boven'; up.setAttribute('aria-label', `${c.name} naar boven`);
+    up.disabled = i === 0;
+    up.onclick = () => reorderCorr(i, i - 1);
+
+    const down = document.createElement('button');
+    down.className = 'sc-move'; down.textContent = '↓';
+    down.title = 'Naar beneden'; down.setAttribute('aria-label', `${c.name} naar beneden`);
+    down.disabled = i === last;
+    down.onclick = () => reorderCorr(i, i + 1);
+
+    const del = document.createElement('button');
+    del.className = 'sc-del'; del.textContent = 'verwijder';
+    del.onclick = async () => {
       const r = await (await fetch('api/correspondents/' + encodeURIComponent(c.slug), { method: 'DELETE' })).json();
       state.correspondents = r.correspondents || [];
       if (state.activeCorr === c.slug) state.activeCorr = null;
       renderCorrespondents();
       renderSavedCorr();
     };
-    li.append(b);
+
+    controls.append(up, down, del);
+    li.append(controls);
     ul.append(li);
   });
+}
+
+// Move the correspondent at index `from` to index `to`, persist the new order,
+// and re-render. The grid follows the saved order, so it updates too.
+async function reorderCorr(from, to) {
+  const slugs = state.correspondents.map((c) => c.slug);
+  const [moved] = slugs.splice(from, 1);
+  slugs.splice(to, 0, moved);
+  try {
+    const r = await (await fetch('api/correspondents', {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ slugs }),
+    })).json();
+    state.correspondents = r.correspondents || state.correspondents;
+  } catch {
+    return toast('Volgorde opslaan mislukt.');
+  }
+  renderCorrespondents();
+  renderSavedCorr();
 }
 
 // The primary feed is loaded from the general tile, so this select only carries

@@ -85,6 +85,18 @@ app.post('/api/correspondents', async (req, res) => {
   }
 });
 
+// Reorder the saved correspondents. The body carries the full slug list in the
+// desired order; we intersect with what's already saved so this can only
+// reorder (or drop) existing entries, never add an unresolved slug.
+app.put('/api/correspondents', async (req, res) => {
+  const incoming = Array.isArray(req.body?.slugs) ? req.body.slugs : null;
+  if (!incoming) return res.status(400).json({ error: 'Verwachtte { slugs: [...] }.' });
+  const current = new Set(loadSettings().correspondents);
+  const list = incoming.filter((s) => current.has(s));
+  saveSettings({ correspondents: list });
+  res.json({ correspondents: await resolveAll(list) });
+});
+
 app.delete('/api/correspondents/:slug', async (req, res) => {
   const list = loadSettings().correspondents.filter((s) => s !== req.params.slug);
   saveSettings({ correspondents: list });
