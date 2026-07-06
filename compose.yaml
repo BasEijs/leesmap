@@ -26,10 +26,16 @@ services:
       BASIC_AUTH_USER: ${BASIC_AUTH_USER:-}
       BASIC_AUTH_PASS: ${BASIC_AUTH_PASS:-}
     volumes:
-      - ./data:/data
+      # A Docker-managed named volume (not a host bind mount). Docker initialises
+      # it from the image, where /data is owned by the container's `node` user,
+      # so settings/correspondents/session actually persist. A bind mount to a
+      # host folder gets created root-owned and the non-root app can't write it.
+      - leesmap-data:/data
     # To auto-send, the container must reach the reader's IP. On your home WiFi
     # a normal bridge network reaches LAN hosts fine. If that ever fails, try:
     # network_mode: host
+volumes:
+  leesmap-data:
 networks:
   default:
     external: true
