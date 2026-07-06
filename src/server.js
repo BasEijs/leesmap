@@ -7,6 +7,7 @@ import { articleToChapter } from './article.js';
 import { buildSingle, buildBundle } from './epub.js';
 import { probe, upload } from './device.js';
 import { get as getMedia } from './media.js';
+import { slugFromInput, resolveCorrespondent, resolveAll } from './correspondents.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -52,6 +53,40 @@ app.post('/api/settings', (req, res) => {
   if (typeof deviceIp === 'string') next.deviceIp = deviceIp.trim();
   if (Array.isArray(feeds)) next.feeds = feeds;
   res.json(saveSettings(next));
+});
+
+// --- Correspondents (avatar grid) ---
+// Resolve the saved slugs to {slug, name, beat, avatar, feedUrl}.
+app.get('/api/correspondents', async (req, res) => {
+  try {
+    res.json({ correspondents: await resolveAll(loadSettings().correspondents) });
+  } catch (err) {
+    res.status(err.status || 502).json({ error: err.message });
+  }
+});
+
+// Add a correspondent by slug, profile URL, or feed URL. We resolve it first
+// (which also validates it exists) before persisting the slug.
+app.post('/api/correspondents', async (req, res) => {
+  const slug = slugFromInput(req.body?.input);
+  if (!slug) return res.status(400).json({ error: 'Geef een slug of profiel-URL.' });
+  try {
+    const resolved = await resolveCorrespondent(slug);
+    const s = loadSettings();
+    const list = s.correspondents.includes(slug)
+      ? s.correspondents
+      : [...s.correspondents, slug];
+    saveSettings({ correspondents: list });
+    res.json({ correspondent: resolved, correspondents: await resolveAll(list) });
+  } catch (err) {
+    res.status(err.status || 502).json({ error: err.message });
+  }
+});
+
+app.delete('/api/correspondents/:slug', async (req, res) => {
+  const list = loadSettings().correspondents.filter((s) => s !== req.params.slug);
+  saveSettings({ correspondents: list });
+  res.json({ correspondents: await resolveAll(list) });
 });
 
 // --- Feed ---

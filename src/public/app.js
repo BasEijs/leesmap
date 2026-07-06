@@ -1,7 +1,10 @@
 'use strict';
 
 const $ = (s) => document.querySelector(s);
-const state = { feeds: [], deviceIp: '', items: [], selected: new Set() };
+const state = {
+  feeds: [], deviceIp: '', items: [], selected: new Set(),
+  correspondents: [], activeCorr: null,
+};
 
 function toast(msg) {
   const el = document.createElement('div');
@@ -34,6 +37,78 @@ async function loadConfig() {
   renderFeedSelect(c.primaryFeedConfigured);
   renderSavedFeeds();
   probeDevice();
+  loadCorrespondents();
+}
+
+// ---------- Correspondents ----------
+async function loadCorrespondents() {
+  try {
+    const r = await (await fetch('api/correspondents')).json();
+    state.correspondents = r.correspondents || [];
+  } catch {
+    state.correspondents = [];
+  }
+  renderCorrespondents();
+  renderSavedCorr();
+}
+
+function renderCorrespondents() {
+  const wrap = $('#correspondents-wrap');
+  const grid = $('#corr-grid');
+  grid.innerHTML = '';
+  wrap.hidden = state.correspondents.length === 0;
+  for (const c of state.correspondents) {
+    const li = document.createElement('li');
+    const btn = document.createElement('button');
+    btn.className = 'corr-tile' + (state.activeCorr === c.slug ? ' active' : '');
+    btn.title = c.beat ? `${c.name} · ${c.beat}` : c.name;
+    btn.setAttribute('aria-pressed', String(state.activeCorr === c.slug));
+    const avatar = c.avatar
+      ? `<img class="corr-av" src="${c.avatar}" alt="" loading="lazy" />`
+      : `<span class="corr-av corr-av-ph">${(c.name[0] || '?').toUpperCase()}</span>`;
+    btn.innerHTML = `${avatar}<span class="corr-name">${c.name}</span>`;
+    btn.onclick = () => selectCorrespondent(c);
+    li.append(btn);
+    grid.append(li);
+  }
+}
+
+function selectCorrespondent(c) {
+  state.activeCorr = c.slug;
+  $('#feed-url').value = '';
+  $('#corr-clear').hidden = false;
+  renderCorrespondents();
+  loadFeed(c.feedUrl);
+}
+
+function clearCorrespondent() {
+  state.activeCorr = null;
+  $('#corr-clear').hidden = true;
+  renderCorrespondents();
+  loadFeed();
+}
+
+function renderSavedCorr() {
+  const ul = $('#saved-corr');
+  ul.innerHTML = '';
+  state.correspondents.forEach((c) => {
+    const li = document.createElement('li');
+    const av = c.avatar
+      ? `<img class="corr-av-sm" src="${c.avatar}" alt="" />`
+      : `<span class="corr-av-sm corr-av-ph">${(c.name[0] || '?').toUpperCase()}</span>`;
+    li.innerHTML = `<span class="sc-id">${av}<span>${c.name}</span></span>`;
+    const b = document.createElement('button');
+    b.textContent = 'verwijder';
+    b.onclick = async () => {
+      const r = await (await fetch('api/correspondents/' + encodeURIComponent(c.slug), { method: 'DELETE' })).json();
+      state.correspondents = r.correspondents || [];
+      if (state.activeCorr === c.slug) clearCorrespondent();
+      renderCorrespondents();
+      renderSavedCorr();
+    };
+    li.append(b);
+    ul.append(li);
+  });
 }
 
 function renderFeedSelect(hasPrimary) {
@@ -91,8 +166,10 @@ async function probeDevice(ip) {
 }
 
 // ---------- Feed ----------
-async function loadFeed() {
-  const url = $('#feed-url').value.trim() || $('#feed-select').value;
+async function loadFeed(explicitUrl) {
+  const url = explicitUrl != null
+    ? explicitUrl
+    : ($('#feed-url').value.trim() || $('#feed-select').value);
   $('#feed-empty').textContent = 'Feed laden…';
   $('#feed-empty').hidden = false;
   $('#feed-meta').textContent = '';
@@ -265,8 +342,39 @@ function openDrawer(open) {
 }
 
 // ---------- Wire up ----------
-$('#btn-load').onclick = loadFeed;
-$('#feed-select').onchange = () => { $('#feed-url').value = ''; loadFeed(); };
+// Loading via the select or URL box means we're no longer on a correspondent.
+function manualLoad() {
+  state.activeCorr = null;
+  $('#corr-clear').hidden = true;
+  renderCorrespondents();
+  loadFeed();
+}
+$('#btn-load').onclick = manualLoad;
+$('#feed-select').onchange = () => { $('#feed-url').value = ''; manualLoad(); };
+$('#corr-clear').onclick = clearCorrespondent;
+$('#nc-add').onclick = async () => {
+  const input = $('#nc-input').value.trim();
+  if (!input) return toast('Slug of profiel-URL nodig.');
+  $('#nc-add').disabled = true;
+  try {
+    const res = await fetch('api/correspondents', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ input }),
+    });
+    const r = await res.json();
+    if (!res.ok) throw new Error(r.error || 'Kon niet toevoegen.');
+    state.correspondents = r.correspondents || [];
+    $('#nc-input').value = '';
+    renderCorrespondents();
+    renderSavedCorr();
+    toast(`${r.correspondent?.name || 'Correspondent'} toegevoegd.`);
+  } catch (err) {
+    toast(err.message);
+  } finally {
+    $('#nc-add').disabled = false;
+  }
+};
 $('#sel-all').onclick = () => { state.items.forEach((i) => state.selected.add(i.link)); renderArticles(); updateCount(); };
 $('#sel-none').onclick = () => { state.selected.clear(); renderArticles(); updateCount(); };
 $('#btn-send').onclick = send;

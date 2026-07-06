@@ -30,8 +30,11 @@ const defaults = {
   // Where CrossPoint listens. Own hotspot: 192.168.4.1 / crosspoint.local.
   // On your home WiFi it's whatever DHCP handed the reader.
   deviceIp: process.env.X4_IP || '192.168.4.1',
-  // Extra named feeds you save from the UI (correspondents, collections…).
+  // Extra named feeds you save from the UI (collections, custom URLs…).
   feeds: [],
+  // Correspondent profile slugs shown as an avatar grid; clicking one loads
+  // that correspondent's feed. Resolved to name/avatar at runtime.
+  correspondents: ['lynnberger', 'michieldehoog'],
 };
 
 function ensureDir() {

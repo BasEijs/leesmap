@@ -30,6 +30,14 @@
       <input id="feed-url" type="url" placeholder="…of plak een feed-URL" />
       <button id="btn-load">Laad</button>
     </div>
+    <div class="correspondents" id="correspondents-wrap" hidden>
+      <div class="corr-head">
+        <span class="corr-label">Correspondenten</span>
+        <button class="link" id="corr-clear" hidden>← alle verhalen</button>
+      </div>
+      <ul class="corr-grid" id="corr-grid"></ul>
+    </div>
+
     <div class="feed-tools">
       <button class="link" id="sel-all">alles</button>
       <button class="link" id="sel-none">niets</button>
@@ -83,6 +91,15 @@
     </div>
     <small class="muted" id="device-detail">Eigen hotspot: 192.168.4.1 · crosspoint.local. Op je wifi: het IP dat de reader kreeg.</small>
   </label>
+
+  <div class="field">Correspondenten
+    <ul class="saved-corr" id="saved-corr"></ul>
+    <div class="row">
+      <input id="nc-input" type="text" placeholder="slug of profiel-URL (bv. lynnberger)" />
+      <button id="nc-add">+</button>
+    </div>
+    <small class="muted">Bijv. <code>lynnberger</code> of <code>decorrespondent.nl/michieldehoog</code>.</small>
+  </div>
 
   <div class="field">Opgeslagen feeds
     <ul class="saved-feeds" id="saved-feeds"></ul>
