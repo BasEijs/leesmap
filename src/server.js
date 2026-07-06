@@ -1,4 +1,6 @@
 import express from 'express';
+import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { env, loadSettings, saveSettings } from './config.js';
@@ -203,7 +205,37 @@ app.post('/api/send', async (req, res) => {
   }
 });
 
-app.use(express.static(join(__dirname, 'public')));
+// --- Static files with cache-busting ---
+// A stale app.js/style.css served by Cloudflare or a caching proxy is why a new
+// build sometimes doesn't reach a client. Fix: version the asset URLs with a
+// short content hash. index.html is served with `no-cache` (always revalidated,
+// so a new hash lands immediately), while the hashed JS/CSS can cache forever.
+// The hash only changes when the files change, so unchanged deploys keep their
+// cache. Read once at startup; the container restarts on deploy (and `node
+// --watch` restarts in dev), so this stays in sync.
+const publicDir = join(__dirname, 'public');
+const assetVer = createHash('sha1')
+  .update(readFileSync(join(publicDir, 'app.js')))
+  .update(readFileSync(join(publicDir, 'style.css')))
+  .digest('hex')
+  .slice(0, 8);
+const indexHtml = readFileSync(join(publicDir, 'index.html'), 'utf8')
+  .replace('href="style.css"', `href="style.css?v=${assetVer}"`)
+  .replace('src="app.js"', `src="app.js?v=${assetVer}"`);
+
+app.get(['/', '/index.html'], (req, res) => {
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.end(indexHtml);
+});
+app.use(express.static(publicDir, {
+  setHeaders(res, filePath) {
+    // JS/CSS are always requested with a ?v= hash, so they're safe to pin.
+    if (/\.(js|css)$/.test(filePath)) {
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    }
+  },
+}));
 
 app.listen(env.port, () => {
   console.log(`Leesmap running on http://0.0.0.0:${env.port}`);

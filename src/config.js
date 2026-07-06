@@ -34,7 +34,25 @@ const defaults = {
   feeds: [],
   // Correspondent profile slugs shown as an avatar grid; clicking one loads
   // that correspondent's feed. Resolved to name/avatar at runtime.
-  correspondents: ['lynnberger', 'michieldehoog'],
+  // Slugs come from decorrespondent.nl/correspondenten (the last path segment
+  // of each profile link). Manage the list in the settings drawer.
+  correspondents: [
+    'lynnberger',
+    'michieldehoog',
+    'robwijnberg',
+    'rutgerbregman',
+    'jessefrederik',
+    'maitevermeulen',
+    'jelmermommers',
+    'mauritsmartijn',
+    'thomasoudman',
+    'sanneblauw',
+    'lexbohlmeijer',
+    'rinkeverkerk',
+    'marjolijnvanheemstra',
+    'tamarstelling',
+    'johannesvisser',
+  ],
 };
 
 function ensureDir() {

@@ -102,8 +102,8 @@ main {
 }
 .corr-grid {
   list-style: none; margin: 0.6rem 0 0; padding: 0;
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
-  gap: 0.7rem 0.5rem;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+  gap: 0.8rem 0.5rem; align-items: start;
 }
 .corr-grid li { min-width: 0; }
 .corr-tile {
@@ -119,14 +119,25 @@ main {
   display: grid; place-items: center;
   font-family: var(--serif); font-weight: 700; font-size: 1.3rem; color: var(--ink-2);
 }
+/* The general "alle verhalen" tile: a De Correspondent monogram. */
+.corr-logo {
+  display: grid; place-items: center;
+  background: var(--accent); border-color: var(--accent-ink); color: #fff;
+  font-family: var(--serif); font-weight: 800; font-size: 1.35rem; letter-spacing: -0.03em;
+}
+.corr-tile.active .corr-logo { color: #fff; }
 .corr-tile:hover .corr-av { border-color: var(--ink); transform: translateY(-1px); }
+.corr-tile:hover .corr-logo { border-color: var(--accent); }
 .corr-tile.active .corr-av {
   border-color: var(--accent);
   box-shadow: 0 0 0 2px var(--paper), 0 0 0 4px var(--accent);
 }
+/* Names are always shown in full: wrap onto as many lines as needed and break
+   over-long words rather than truncating. Grid rows auto-size so wrapped names
+   grow their own tile without overlapping neighbours. */
 .corr-name {
   font-size: 0.72rem; line-height: 1.15; text-align: center; color: var(--ink-2);
-  max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  max-width: 100%; overflow-wrap: break-word; hyphens: auto;
 }
 .corr-tile.active .corr-name { color: var(--accent); font-weight: 700; }
 
@@ -139,7 +150,7 @@ main {
 }
 .saved-corr button { background: none; border: none; color: var(--bad); text-decoration: underline; }
 .sc-id { display: inline-flex; align-items: center; gap: 0.5rem; min-width: 0; }
-.sc-id > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sc-id > span:last-child { overflow-wrap: break-word; }
 .corr-av-sm {
   width: 26px; height: 26px; border-radius: 50%; object-fit: cover; flex: none;
   background: var(--paper-2); border: 1px solid var(--rule); overflow: hidden;

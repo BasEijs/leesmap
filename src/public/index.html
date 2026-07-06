@@ -26,14 +26,13 @@
   <!-- FEED -->
   <section class="feed" aria-label="Feed">
     <div class="feed-head">
-      <select id="feed-select" aria-label="Kies feed"></select>
       <input id="feed-url" type="url" placeholder="…of plak een feed-URL" />
       <button id="btn-load">Laad</button>
+      <select id="feed-select" aria-label="Opgeslagen feed" hidden></select>
     </div>
-    <div class="correspondents" id="correspondents-wrap" hidden>
+    <div class="correspondents" id="correspondents-wrap">
       <div class="corr-head">
         <span class="corr-label">Correspondenten</span>
-        <button class="link" id="corr-clear" hidden>← alle verhalen</button>
       </div>
       <ul class="corr-grid" id="corr-grid"></ul>
     </div>

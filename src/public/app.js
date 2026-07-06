@@ -3,8 +3,14 @@
 const $ = (s) => document.querySelector(s);
 const state = {
   feeds: [], deviceIp: '', items: [], selected: new Set(),
-  correspondents: [], activeCorr: null,
+  // activeCorr = slug of the selected correspondent, or null.
+  // generalActive = true when the general "alle verhalen" tile is selected.
+  correspondents: [], activeCorr: null, generalActive: false,
 };
+
+// The general/main-feed tile: a De Correspondent monogram that loads the
+// primary RSS feed (server falls back to DC_RSS_URL when no url is passed).
+const DC_LOGO = '<span class="corr-av corr-logo" aria-hidden="true">dC</span>';
 
 function toast(msg) {
   const el = document.createElement('div');
@@ -34,7 +40,7 @@ async function loadConfig() {
   state.deviceIp = c.deviceIp || '';
   $('#device-ip').value = state.deviceIp;
   $('#dot-cookie').className = 'dot ' + (c.cookieConfigured ? 'on' : 'off');
-  renderFeedSelect(c.primaryFeedConfigured);
+  renderFeedSelect();
   renderSavedFeeds();
   probeDevice();
   loadCorrespondents();
@@ -53,16 +59,30 @@ async function loadCorrespondents() {
 }
 
 function renderCorrespondents() {
-  const wrap = $('#correspondents-wrap');
   const grid = $('#corr-grid');
   grid.innerHTML = '';
-  wrap.hidden = state.correspondents.length === 0;
+
+  // The general tile always comes first and loads the full De Correspondent feed.
+  const gen = document.createElement('li');
+  const genBtn = document.createElement('button');
+  genBtn.className = 'corr-tile' + (state.generalActive ? ' active' : '');
+  genBtn.title = 'Alle verhalen';
+  genBtn.setAttribute('aria-pressed', String(state.generalActive));
+  genBtn.innerHTML = `${DC_LOGO}<span class="corr-name">Alle verhalen</span>`;
+  genBtn.onclick = selectGeneral;
+  gen.append(genBtn);
+  grid.append(gen);
+
+  // Skip tiles that failed to resolve (a wrong/removed slug) so the grid never
+  // shows a broken placeholder; they stay removable in the settings drawer.
   for (const c of state.correspondents) {
+    if (c.error) continue;
     const li = document.createElement('li');
     const btn = document.createElement('button');
-    btn.className = 'corr-tile' + (state.activeCorr === c.slug ? ' active' : '');
+    const active = state.activeCorr === c.slug;
+    btn.className = 'corr-tile' + (active ? ' active' : '');
     btn.title = c.beat ? `${c.name} · ${c.beat}` : c.name;
-    btn.setAttribute('aria-pressed', String(state.activeCorr === c.slug));
+    btn.setAttribute('aria-pressed', String(active));
     const avatar = c.avatar
       ? `<img class="corr-av" src="${c.avatar}" alt="" loading="lazy" />`
       : `<span class="corr-av corr-av-ph">${(c.name[0] || '?').toUpperCase()}</span>`;
@@ -75,17 +95,19 @@ function renderCorrespondents() {
 
 function selectCorrespondent(c) {
   state.activeCorr = c.slug;
+  state.generalActive = false;
   $('#feed-url').value = '';
-  $('#corr-clear').hidden = false;
   renderCorrespondents();
   loadFeed(c.feedUrl);
 }
 
-function clearCorrespondent() {
+// Load the full feed via the general tile (empty url → server uses DC_RSS_URL).
+function selectGeneral() {
   state.activeCorr = null;
-  $('#corr-clear').hidden = true;
+  state.generalActive = true;
+  $('#feed-url').value = '';
   renderCorrespondents();
-  loadFeed();
+  loadFeed('');
 }
 
 function renderSavedCorr() {
@@ -102,7 +124,7 @@ function renderSavedCorr() {
     b.onclick = async () => {
       const r = await (await fetch('api/correspondents/' + encodeURIComponent(c.slug), { method: 'DELETE' })).json();
       state.correspondents = r.correspondents || [];
-      if (state.activeCorr === c.slug) clearCorrespondent();
+      if (state.activeCorr === c.slug) state.activeCorr = null;
       renderCorrespondents();
       renderSavedCorr();
     };
@@ -111,12 +133,15 @@ function renderSavedCorr() {
   });
 }
 
-function renderFeedSelect(hasPrimary) {
+// The primary feed is loaded from the general tile, so this select only carries
+// user-saved feeds and is hidden entirely when there are none.
+function renderFeedSelect() {
   const sel = $('#feed-select');
   sel.innerHTML = '';
-  if (hasPrimary) sel.append(new Option('Mijn feed (alle verhalen)', ''));
+  sel.hidden = state.feeds.length === 0;
+  if (!state.feeds.length) return;
+  sel.append(new Option('Opgeslagen feed…', ''));
   for (const f of state.feeds) sel.append(new Option(f.name, f.url));
-  if (!hasPrimary && !state.feeds.length) sel.append(new Option('— geen feed ingesteld —', ''));
 }
 
 function renderSavedFeeds() {
@@ -131,7 +156,7 @@ function renderSavedFeeds() {
       state.feeds.splice(i, 1);
       await saveSettings({ feeds: state.feeds });
       renderSavedFeeds();
-      renderFeedSelect($('#feed-select').options[0]?.value === '');
+      renderFeedSelect();
     };
     li.append(b);
     ul.append(li);
@@ -167,9 +192,7 @@ async function probeDevice(ip) {
 
 // ---------- Feed ----------
 async function loadFeed(explicitUrl) {
-  const url = explicitUrl != null
-    ? explicitUrl
-    : ($('#feed-url').value.trim() || $('#feed-select').value);
+  const url = explicitUrl != null ? explicitUrl : $('#feed-url').value.trim();
   $('#feed-empty').textContent = 'Feed laden…';
   $('#feed-empty').hidden = false;
   $('#feed-meta').textContent = '';
@@ -342,16 +365,24 @@ function openDrawer(open) {
 }
 
 // ---------- Wire up ----------
-// Loading via the select or URL box means we're no longer on a correspondent.
+// Loading via the URL box or a saved feed means we're no longer on a
+// correspondent or the general feed. An empty URL box falls back to the
+// primary feed (same as the general tile).
 function manualLoad() {
   state.activeCorr = null;
-  $('#corr-clear').hidden = true;
+  state.generalActive = false;
   renderCorrespondents();
-  loadFeed();
+  loadFeed($('#feed-url').value.trim());
 }
 $('#btn-load').onclick = manualLoad;
-$('#feed-select').onchange = () => { $('#feed-url').value = ''; manualLoad(); };
-$('#corr-clear').onclick = clearCorrespondent;
+$('#feed-select').onchange = (e) => {
+  const url = e.target.value;
+  $('#feed-url').value = '';
+  state.activeCorr = null;
+  state.generalActive = false;
+  renderCorrespondents();
+  loadFeed(url);
+};
 $('#nc-add').onclick = async () => {
   const input = $('#nc-input').value.trim();
   if (!input) return toast('Slug of profiel-URL nodig.');
@@ -397,7 +428,7 @@ $('#nf-add').onclick = async () => {
   await saveSettings({ feeds: state.feeds });
   $('#nf-name').value = $('#nf-url').value = '';
   renderSavedFeeds();
-  renderFeedSelect($('#feed-select').options[0]?.value === '');
+  renderFeedSelect();
 };
 
 loadConfig();
