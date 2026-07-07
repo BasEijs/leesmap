@@ -89,7 +89,11 @@ export async function buildSingle(chapter) {
     },
     [chapter]
   );
-  return { buffer, filename: `dc-${slug(chapter.title)}.epub` };
+  const authorSlug = chapter.author ? slug(chapter.author) : '';
+  const filename = authorSlug
+    ? `dc-${authorSlug}-${slug(chapter.title)}.epub`
+    : `dc-${slug(chapter.title)}.epub`;
+  return { buffer, filename };
 }
 
 // "Sanne Blauw", "Sanne Blauw & Rutger Bregman", or "Sanne Blauw e.a." for
@@ -138,5 +142,11 @@ export async function buildBundle(chapters, { title } = {}) {
     },
     chapters
   );
-  return { buffer, filename: `dc-selectie-${today}.epub` };
+  // Filename carries the correspondent names too (same list as the cover),
+  // so a downloaded bundle is identifiable without opening it.
+  const authorsSlug = autoTitle ? slug(autoTitle) : '';
+  const filename = authorsSlug
+    ? `dc-selectie-${authorsSlug}-${today}.epub`
+    : `dc-selectie-${today}.epub`;
+  return { buffer, filename };
 }
