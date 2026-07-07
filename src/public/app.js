@@ -3,9 +3,10 @@
 const $ = (s) => document.querySelector(s);
 const state = {
   feeds: [], deviceIp: '', items: [], selected: new Set(),
-  // activeCorr = slug of the selected correspondent, or null.
+  // activeCorrs = set of selected correspondent slugs. Selecting more than one
+  // combines their feeds chronologically (latest N across all of them).
   // generalActive = true when the general "alle verhalen" tile is selected.
-  correspondents: [], activeCorr: null, generalActive: false,
+  correspondents: [], activeCorrs: new Set(), generalActive: false,
 };
 
 // The general/main-feed tile: a De Correspondent monogram that loads the
@@ -79,7 +80,7 @@ function renderCorrespondents() {
     if (c.error) continue;
     const li = document.createElement('li');
     const btn = document.createElement('button');
-    const active = state.activeCorr === c.slug;
+    const active = state.activeCorrs.has(c.slug);
     btn.className = 'corr-tile' + (active ? ' active' : '');
     btn.title = c.beat ? `${c.name} · ${c.beat}` : c.name;
     btn.setAttribute('aria-pressed', String(active));
@@ -93,17 +94,32 @@ function renderCorrespondents() {
   }
 }
 
+// Correspondent tiles toggle: clicking adds/removes the slug from the active
+// set. With one selected we load that feed; with several we combine them
+// (server merges chronologically and caps to a single feed's length). Removing
+// the last one falls back to the general feed.
 function selectCorrespondent(c) {
-  state.activeCorr = c.slug;
+  if (state.activeCorrs.has(c.slug)) state.activeCorrs.delete(c.slug);
+  else state.activeCorrs.add(c.slug);
   state.generalActive = false;
   $('#feed-url').value = '';
   renderCorrespondents();
-  loadFeed(c.feedUrl);
+  loadSelectedCorrespondents();
+}
+
+// Build the (possibly comma-joined) feed URL for the active correspondents and
+// load it. No selection → back to the general feed.
+function loadSelectedCorrespondents() {
+  const urls = [...state.activeCorrs]
+    .map((slug) => state.correspondents.find((c) => c.slug === slug)?.feedUrl)
+    .filter(Boolean);
+  if (!urls.length) return selectGeneral();
+  loadFeed(urls.join(','));
 }
 
 // Load the full feed via the general tile (empty url → server uses DC_RSS_URL).
 function selectGeneral() {
-  state.activeCorr = null;
+  state.activeCorrs.clear();
   state.generalActive = true;
   $('#feed-url').value = '';
   renderCorrespondents();
@@ -141,7 +157,7 @@ function renderSavedCorr() {
     del.onclick = async () => {
       const r = await (await fetch('api/correspondents/' + encodeURIComponent(c.slug), { method: 'DELETE' })).json();
       state.correspondents = r.correspondents || [];
-      if (state.activeCorr === c.slug) state.activeCorr = null;
+      state.activeCorrs.delete(c.slug);
       renderCorrespondents();
       renderSavedCorr();
     };
@@ -408,7 +424,7 @@ function openDrawer(open) {
 // correspondent or the general feed. An empty URL box falls back to the
 // primary feed (same as the general tile).
 function manualLoad() {
-  state.activeCorr = null;
+  state.activeCorrs.clear();
   state.generalActive = false;
   renderCorrespondents();
   loadFeed($('#feed-url').value.trim());
@@ -417,7 +433,7 @@ $('#btn-load').onclick = manualLoad;
 $('#feed-select').onchange = (e) => {
   const url = e.target.value;
   $('#feed-url').value = '';
-  state.activeCorr = null;
+  state.activeCorrs.clear();
   state.generalActive = false;
   renderCorrespondents();
   loadFeed(url);

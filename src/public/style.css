@@ -100,6 +100,7 @@ main {
   font-family: var(--mono); font-size: 0.68rem; text-transform: uppercase;
   letter-spacing: 0.08em; color: var(--ink-2);
 }
+.corr-hint { font-size: 0.72rem; }
 .corr-grid {
   list-style: none; margin: 0.6rem 0 0; padding: 0;
   display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));

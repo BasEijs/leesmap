@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { env, loadSettings, saveSettings } from './config.js';
-import { parseFeed } from './feed.js';
+import { parseFeed, parseCombinedFeed } from './feed.js';
 import { articleToChapter } from './article.js';
 import { buildSingle, buildBundle } from './epub.js';
 import { probe, upload } from './device.js';
@@ -104,9 +104,15 @@ app.delete('/api/correspondents/:slug', async (req, res) => {
 });
 
 // --- Feed ---
+// `url` may name a single feed, or several (comma-separated, or repeated) to
+// combine per-correspondent feeds into one chronological list.
 app.get('/api/feed', async (req, res) => {
   try {
-    const feed = await parseFeed(req.query.url);
+    const raw = req.query.url;
+    const urls = (Array.isArray(raw) ? raw : String(raw ?? '').split(','))
+      .map((u) => u.trim())
+      .filter(Boolean);
+    const feed = urls.length > 1 ? await parseCombinedFeed(urls) : await parseFeed(urls[0]);
     res.json(feed);
   } catch (err) {
     res.status(err.status || 502).json({ error: err.message });
