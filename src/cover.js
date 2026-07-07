@@ -1,4 +1,4 @@
-// Generates a clean typographic cover image (PNG) for an EPUB, so the reader
+// Generates a clean typographic cover image (JPEG) for an EPUB, so the reader
 // shows a real cover instead of scraping text off the first page. Deliberately
 // high-contrast black-on-white with generous type: that's what survives a small
 // greyscale e-ink panel and its thumbnail rendering.
@@ -204,7 +204,7 @@ function fitTitle(ctx, text, { maxWidth, maxLines, min, max }) {
  *                              multiple authors, drawn as a row of small circles
  *                              (for selection/bundle covers); overrides the
  *                              single portrait
- * @returns {Promise<Buffer>} PNG bytes
+ * @returns {Promise<Buffer>} JPEG bytes
  */
 export async function coverImage({
   kicker = 'De Correspondent',
@@ -310,12 +310,16 @@ export async function coverImage({
     ctx.fillText(footer, cx, H - MARGIN - 44);
   }
 
-  return canvas.toBuffer('image/png');
+  // JPEG, not PNG: PocketBook's sleep-screen ("show the current book's cover
+  // when locked") only renders JPEG covers. A PNG shows in the library grid but
+  // the lock screen silently falls back to the default wallpaper. High quality
+  // keeps the crisp black-on-white type clean on the e-ink panel.
+  return canvas.toBuffer('image/jpeg', 92);
 }
 
 // A `File` is what epub-gen-memory's `cover` option accepts directly; it derives
-// the media type from the `.png` name. This keeps cover bytes in-process (no
+// the media type from the `.jpg` name. This keeps cover bytes in-process (no
 // round-trip through the /media route).
 export async function coverFile(opts) {
-  return new File([await coverImage(opts)], 'cover.png', { type: 'image/png' });
+  return new File([await coverImage(opts)], 'cover.jpg', { type: 'image/jpeg' });
 }
