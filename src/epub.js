@@ -142,11 +142,12 @@ export async function buildBundle(chapters, { title } = {}) {
     },
     chapters
   );
-  // Filename carries the correspondent names too (same list as the cover),
-  // so a downloaded bundle is identifiable without opening it.
+  // Filename carries the correspondent names too (same list as the cover), so
+  // a downloaded bundle is identifiable without opening it — "selectie" is
+  // only needed as a fallback label when there are no authors to name.
   const authorsSlug = autoTitle ? slug(autoTitle) : '';
   const filename = authorsSlug
-    ? `dc-selectie-${authorsSlug}-${today}.epub`
+    ? `dc-${authorsSlug}-${today}.epub`
     : `dc-selectie-${today}.epub`;
   return { buffer, filename };
 }
