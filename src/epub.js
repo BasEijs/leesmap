@@ -92,10 +92,18 @@ export async function buildSingle(chapter) {
   return { buffer, filename: `dc-${slug(chapter.title)}.epub` };
 }
 
+// "Sanne Blauw", "Sanne Blauw & Rutger Bregman", or "Sanne Blauw e.a." for
+// three or more — a readable stand-in for "Leesmap" when nobody typed a title.
+function authorsLabel(names) {
+  if (names.length === 0) return null;
+  if (names.length === 1) return names[0];
+  if (names.length === 2) return `${names[0]} & ${names[1]}`;
+  return `${names[0]} e.a.`;
+}
+
 // Several articles -> one EPUB, one chapter each, with a table of contents.
 export async function buildBundle(chapters, { title } = {}) {
   const today = new Date().toISOString().slice(0, 10);
-  const bookTitle = title || `De Correspondent — selectie ${today}`;
   const count = chapters.length;
 
   // The distinct authors in the selection, in first-appearance order, each with
@@ -112,15 +120,17 @@ export async function buildBundle(chapters, { title } = {}) {
     portraits.push({ author, avatar: ch.avatar || undefined });
   }
 
+  const autoTitle = authorsLabel(portraits.map((p) => p.author));
+  const coverTitle = title || autoTitle || 'Leesmap';
+  const bookTitle = title || (autoTitle ? `De Correspondent — ${autoTitle}` : `De Correspondent — selectie ${today}`);
+
   const buffer = await render(
     {
       title: bookTitle,
       author: 'De Correspondent',
       description: `Selectie van ${count} artikelen.`,
       cover: await coverFile({
-        // The book title carries a machine date; the cover gets a cleaner
-        // "Leesmap" wordmark with the date in the footer instead.
-        title: title || 'Leesmap',
+        title: coverTitle,
         subtitle: `${count} ${count === 1 ? 'artikel' : 'artikelen'}`,
         footer: dutchDate(),
         portraits,
