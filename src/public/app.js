@@ -403,6 +403,43 @@ async function downloadOne(urls, mode, images, title) {
   URL.revokeObjectURL(a.href);
 }
 
+// ---------- Quick bundle: yesterday's main-feed articles ----------
+// Independent of whatever feed/selection is currently on screen: always pulls
+// the primary feed fresh and filters to the calendar day before today (in the
+// browser's local timezone), so "yesterday" means what the user actually saw
+// on their clock, not the server's.
+function isYesterday(iso) {
+  const d = new Date(iso);
+  if (isNaN(d)) return false;
+  const y = new Date();
+  y.setDate(y.getDate() - 1);
+  return d.getFullYear() === y.getFullYear() &&
+    d.getMonth() === y.getMonth() &&
+    d.getDate() === y.getDate();
+}
+
+async function downloadYesterday() {
+  const btn = $('#btn-download-yesterday');
+  btn.disabled = true;
+  try {
+    const res = await fetch('api/feed');
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Feed-fout');
+    const feed = await res.json();
+    const picks = (feed.items || []).filter((it) => isYesterday(it.date));
+    if (!picks.length) return toast('Geen verhalen van gisteren in de hoofdfeed.');
+    const images = document.querySelector('input[name=images]:checked').value;
+    const y = new Date();
+    y.setDate(y.getDate() - 1);
+    const label = y.toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' });
+    await downloadOne(picks.map((i) => i.link), 'bundle', images, `Leesmap – ${label}`);
+    toast(`Gisteren gebundeld (${picks.length}).`);
+  } catch (err) {
+    toast('Mislukt: ' + err.message);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
 function collect() {
   return {
     urls: [...state.selected],
@@ -465,6 +502,7 @@ $('#sel-all').onclick = () => { state.items.forEach((i) => state.selected.add(i.
 $('#sel-none').onclick = () => { state.selected.clear(); renderArticles(); updateCount(); };
 $('#btn-send').onclick = send;
 $('#btn-download').onclick = download;
+$('#btn-download-yesterday').onclick = downloadYesterday;
 $('#btn-settings').onclick = () => openDrawer(true);
 $('#btn-close').onclick = () => openDrawer(false);
 $('#scrim').onclick = () => openDrawer(false);

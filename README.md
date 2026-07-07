@@ -80,6 +80,10 @@ DC_RSS_URL=... DC_EMAIL=... DC_PASSWORD=... X4_IP=192.168.4.1 npm start
    `ophalen ▸ uitpakken ▸ binden ▸ versturen` per article.
 4. No reader on the network right now? Use **Download .epub** and copy it to the
    SD card (or hand it to Calibre / CrossPoint Sync).
+5. **Gisteren (hoofdfeed)** is a one-click shortcut: it re-fetches your primary
+   feed, bundles every article published yesterday (your browser's local
+   calendar day), and downloads it — ignoring whatever's currently ticked or
+   loaded in the feed list above.
 
 Reader IP and saved feeds live under **instellingen** and persist to `./data`.
 
