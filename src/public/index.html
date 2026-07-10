@@ -69,7 +69,6 @@
     <input id="bundle-title" class="title-in" type="text" placeholder="Titel van de bundel (optioneel)" />
 
     <div class="actions">
-      <button class="primary" id="btn-send">Verstuur naar X4</button>
       <button class="secondary" id="btn-download">Download .epub</button>
       <button class="secondary" id="btn-download-yesterday" title="Bundelt alle verhalen van gisteren uit de hoofdfeed, ongeacht wat hierboven geselecteerd is">Gisteren (hoofdfeed)</button>
     </div>
@@ -77,6 +76,20 @@
     <div class="console" id="console" aria-live="polite">
       <p class="console-idle">De galei-log verschijnt hier.</p>
     </div>
+
+    <details class="extra">
+      <summary>Extra opties</summary>
+
+      <div class="actions">
+        <button class="primary" id="btn-send">Verstuur naar X4</button>
+        <button class="secondary" id="btn-publish">Publiceer naar OPDS</button>
+      </div>
+
+      <div class="field">Gepubliceerd op OPDS
+        <ul class="saved-feeds" id="published-list"></ul>
+        <p class="empty" id="published-empty" hidden>Nog niets gepubliceerd.</p>
+      </div>
+    </details>
   </aside>
 </main>
 

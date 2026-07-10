@@ -93,7 +93,7 @@ export async function buildSingle(chapter) {
   const filename = authorSlug
     ? `dc-${authorSlug}-${slug(chapter.title)}.epub`
     : `dc-${slug(chapter.title)}.epub`;
-  return { buffer, filename };
+  return { buffer, filename, title: chapter.title };
 }
 
 // "Sanne Blauw", "Sanne Blauw & Rutger Bregman", or "Sanne Blauw e.a." for
@@ -149,5 +149,5 @@ export async function buildBundle(chapters, { title } = {}) {
   const filename = authorsSlug
     ? `dc-${authorsSlug}-${today}.epub`
     : `dc-selectie-${today}.epub`;
-  return { buffer, filename };
+  return { buffer, filename, title: bookTitle };
 }

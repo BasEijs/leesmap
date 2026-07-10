@@ -45,6 +45,7 @@ async function loadConfig() {
   renderSavedFeeds();
   probeDevice();
   loadCorrespondents();
+  loadPublished();
 }
 
 // ---------- Correspondents ----------
@@ -299,6 +300,7 @@ function updateCount() {
   $('#sel-count').textContent = n;
   $('#btn-send').disabled = n === 0;
   $('#btn-download').disabled = n === 0;
+  $('#btn-publish').disabled = n === 0;
 }
 
 // ---------- Console ----------
@@ -403,6 +405,57 @@ async function downloadOne(urls, mode, images, title) {
   URL.revokeObjectURL(a.href);
 }
 
+// ---------- Publish to OPDS ----------
+// Builds the current selection (same options as Verstuur/Download) and drops
+// it in the "Gepubliceerd" OPDS feed instead of sending or downloading it, so
+// an ereader can pull it in on its own next sync.
+async function loadPublished() {
+  try {
+    const r = await (await fetch('api/published')).json();
+    renderPublished(r.items || []);
+  } catch {
+    renderPublished([]);
+  }
+}
+
+function renderPublished(items) {
+  const ul = $('#published-list');
+  ul.innerHTML = '';
+  $('#published-empty').hidden = items.length > 0;
+  for (const it of items) {
+    const li = document.createElement('li');
+    li.innerHTML = `<span>${it.title}<br><small class="muted">${fmtDate(it.publishedAt)}</small></span>`;
+    const b = document.createElement('button');
+    b.textContent = 'verwijder';
+    b.onclick = async () => {
+      const r = await (await fetch('api/published/' + encodeURIComponent(it.filename), { method: 'DELETE' })).json();
+      renderPublished(r.items || []);
+    };
+    li.append(b);
+    ul.append(li);
+  }
+}
+
+async function publish() {
+  const body = collect();
+  $('#btn-publish').disabled = true;
+  try {
+    const res = await fetch('api/published', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const r = await res.json();
+    if (!res.ok) throw new Error(r.error || 'Publiceren mislukt');
+    renderPublished(r.items || []);
+    toast('Gepubliceerd naar OPDS.');
+  } catch (err) {
+    toast('Publiceren mislukt: ' + err.message);
+  } finally {
+    $('#btn-publish').disabled = state.selected.size === 0;
+  }
+}
+
 // ---------- Quick bundle: yesterday's main-feed articles ----------
 // Independent of whatever feed/selection is currently on screen: always pulls
 // the primary feed fresh and filters to the calendar day before today (in the
@@ -502,6 +555,7 @@ $('#sel-all').onclick = () => { state.items.forEach((i) => state.selected.add(i.
 $('#sel-none').onclick = () => { state.selected.clear(); renderArticles(); updateCount(); };
 $('#btn-send').onclick = send;
 $('#btn-download').onclick = download;
+$('#btn-publish').onclick = publish;
 $('#btn-download-yesterday').onclick = downloadYesterday;
 $('#btn-settings').onclick = () => openDrawer(true);
 $('#btn-close').onclick = () => openDrawer(false);

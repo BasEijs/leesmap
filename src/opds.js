@@ -24,7 +24,8 @@ function feedHeader({ id, title, updated, href }) {
   <link rel="start" href="/opds" type="application/atom+xml;profile=opds-catalog"/>`;
 }
 
-// Root catalog: one navigation entry pointing at the digests acquisition feed.
+// Root catalog: navigation entries pointing at the digests and published
+// acquisition feeds.
 export function rootCatalog() {
   const now = new Date().toISOString();
   return `${feedHeader({ id: 'urn:leesmap:root', title: 'Leesmap', updated: now, href: '/opds' })}
@@ -34,6 +35,13 @@ export function rootCatalog() {
     <updated>${esc(now)}</updated>
     <content type="text">De laatste dagelijkse selecties van De Correspondent.</content>
     <link rel="subsection" href="/opds/digests" type="application/atom+xml;profile=opds-catalog"/>
+  </entry>
+  <entry>
+    <title>Gepubliceerd</title>
+    <id>urn:leesmap:published</id>
+    <updated>${esc(now)}</updated>
+    <content type="text">Handmatig gepubliceerde selecties.</content>
+    <link rel="subsection" href="/opds/published" type="application/atom+xml;profile=opds-catalog"/>
   </entry>
 </feed>
 `;
@@ -65,6 +73,27 @@ export function digestsFeed(digests) {
     )
     .join('');
   return `${feedHeader({ id: 'urn:leesmap:digests', title: 'Dagelijkse digest', updated: now, href: '/opds/digests' })}${entries}
+</feed>
+`;
+}
+
+// Acquisition feed listing hand-published EPUBs, newest first. Titles come
+// from whatever the user typed (or the auto-generated bundle title) rather
+// than being derived from the filename/date like digestsFeed does.
+export function publishedFeed(items) {
+  const now = new Date().toISOString();
+  const entries = items
+    .map(
+      (it) => `
+  <entry>
+    <title>${esc(it.title)}</title>
+    <id>urn:leesmap:published:${esc(it.filename)}</id>
+    <updated>${esc(it.publishedAt)}</updated>
+    <link rel="http://opds-spec.org/acquisition" href="${esc(`/opds/published/${it.filename}`)}" type="application/epub+zip"/>
+  </entry>`
+    )
+    .join('');
+  return `${feedHeader({ id: 'urn:leesmap:published', title: 'Gepubliceerd', updated: now, href: '/opds/published' })}${entries}
 </feed>
 `;
 }

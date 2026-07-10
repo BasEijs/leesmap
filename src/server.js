@@ -11,7 +11,8 @@ import { probe, upload } from './device.js';
 import { get as getMedia } from './media.js';
 import { slugFromInput, resolveCorrespondent, resolveAll } from './correspondents.js';
 import { listDigests, digestFilePath } from './digests.js';
-import { rootCatalog, digestsFeed } from './opds.js';
+import { listPublished, publishedFilePath, savePublished, deletePublished } from './published.js';
+import { rootCatalog, digestsFeed, publishedFeed } from './opds.js';
 import { startScheduler } from './scheduler.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -161,6 +162,39 @@ app.post('/api/build', async (req, res) => {
   }
 });
 
+// --- Publish a hand-picked selection to the OPDS "Gepubliceerd" feed ---
+// Same build as /api/build, but the result is written to the published store
+// instead of streamed back, so the ereader can pull it over OPDS later.
+app.get('/api/published', async (req, res) => {
+  res.json({ items: await listPublished() });
+});
+
+app.post('/api/published', async (req, res) => {
+  const { urls = [], mode = 'bundle', images = 'strip', title } = req.body || {};
+  if (!urls.length) return res.status(400).json({ error: 'Geen artikelen geselecteerd.' });
+  try {
+    let out;
+    if (mode === 'single') {
+      const chapter = await articleToChapter(urls[0], { images, mediaBase, withAvatar: true });
+      out = await buildSingle(chapter);
+    } else {
+      const chapters = [];
+      for (const url of urls)
+        chapters.push(await articleToChapter(url, { images, mediaBase, withAvatar: true }));
+      out = await buildBundle(chapters, { title });
+    }
+    const record = await savePublished(out.buffer, title || out.title);
+    res.json({ ok: true, items: await listPublished(), published: record });
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/published/:filename', async (req, res) => {
+  await deletePublished(req.params.filename);
+  res.json({ ok: true, items: await listPublished() });
+});
+
 // --- Build + send to the reader, streaming progress as NDJSON ---
 // body: { urls, mode, images, deviceIp, title }
 app.post('/api/send', async (req, res) => {
@@ -256,6 +290,20 @@ app.get('/opds/digests', async (req, res) => {
 
 app.get('/opds/digests/:filename', (req, res) => {
   const filePath = digestFilePath(req.params.filename);
+  if (!filePath || !existsSync(filePath)) return res.status(404).end();
+  res.setHeader('Content-Type', 'application/epub+zip');
+  res.setHeader('Content-Disposition', `attachment; filename="${req.params.filename}"`);
+  createReadStream(filePath).pipe(res);
+});
+
+app.get('/opds/published', async (req, res) => {
+  const items = await listPublished();
+  res.setHeader('Content-Type', OPDS_CONTENT_TYPE);
+  res.end(publishedFeed(items));
+});
+
+app.get('/opds/published/:filename', (req, res) => {
+  const filePath = publishedFilePath(req.params.filename);
   if (!filePath || !existsSync(filePath)) return res.status(404).end();
   res.setHeader('Content-Type', 'application/epub+zip');
   res.setHeader('Content-Disposition', `attachment; filename="${req.params.filename}"`);
