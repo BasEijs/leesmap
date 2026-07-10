@@ -28,6 +28,15 @@ services:
       # Optional narrower gate: guards instellingen + send/publish only, so the
       # app can be shared without letting someone reconfigure or send by accident.
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      # Optional Send-to-PocketBook: mails the nightly digest (and manual sends)
+      # to a PocketBook device's own username@pbsync.com address. Leave
+      # POCKETBOOK_EMAIL unset to skip this channel entirely.
+      POCKETBOOK_EMAIL: ${POCKETBOOK_EMAIL:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-}
     volumes:
       # A Docker-managed named volume (not a host bind mount). Docker initialises
       # it from the image, where /data is owned by the container's `node` user,
