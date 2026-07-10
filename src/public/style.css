@@ -265,6 +265,15 @@ span.corr-av-sm { display: grid; place-items: center; font-size: 0.8rem; }
   text-transform: none; letter-spacing: 0; color: var(--ink);
 }
 .field small { text-transform: none; letter-spacing: 0; font-family: var(--sans); }
+.digest-row { align-items: center; }
+.check {
+  display: flex; align-items: center; gap: 0.4rem; font-family: var(--sans);
+  text-transform: none; letter-spacing: 0; font-size: 0.95rem; color: var(--ink);
+}
+.check input[type="checkbox"] { accent-color: var(--accent); width: auto; flex: none; padding: 0; }
+.check select {
+  background: var(--paper-2); border: 1px solid var(--rule); border-radius: 6px; padding: 0.35rem 0.5rem;
+}
 .saved-feeds { list-style: none; margin: 0.4rem 0; padding: 0; }
 .saved-feeds li { display: flex; justify-content: space-between; gap: 0.5rem;
   align-items: center; padding: 0.4rem 0; border-top: 1px solid var(--rule);

@@ -7,6 +7,7 @@ const state = {
   // combines their feeds chronologically (latest N across all of them).
   // generalActive = true when the general "alle verhalen" tile is selected.
   correspondents: [], activeCorrs: new Set(), generalActive: false,
+  lastDigestRun: null,
 };
 
 // The general/main-feed tile: a De Correspondent monogram that loads the
@@ -46,6 +47,18 @@ async function loadConfig() {
   probeDevice();
   loadCorrespondents();
   loadPublished();
+  $('#digest-enabled').checked = Boolean(c.digestEnabled);
+  $('#digest-hour').value = String(Number.isInteger(c.digestHour) ? c.digestHour : 3);
+  state.lastDigestRun = c.lastDigestRun;
+  renderDigestDetail();
+}
+
+// "'s nachts om 03:00 · laatste run: 10 jul 2026" (or "nog niet gedraaid").
+function renderDigestDetail() {
+  const hour = $('#digest-hour').value.padStart(2, '0');
+  const last = state.lastDigestRun ? fmtDate(state.lastDigestRun) : 'nog niet gedraaid';
+  $('#digest-detail').textContent =
+    `'s nachts om ${hour}:00 · laatste run: ${last}. Publiceert op de "Dagelijkse digest" OPDS-feed.`;
 }
 
 // ---------- Correspondents ----------
@@ -556,6 +569,17 @@ $('#sel-none').onclick = () => { state.selected.clear(); renderArticles(); updat
 $('#btn-send').onclick = send;
 $('#btn-download').onclick = download;
 $('#btn-publish').onclick = publish;
+
+for (let h = 0; h < 24; h++) $('#digest-hour').append(new Option(String(h).padStart(2, '0') + ':00', String(h)));
+$('#digest-enabled').onchange = async () => {
+  const enabled = $('#digest-enabled').checked;
+  await saveSettings({ digestEnabled: enabled });
+  toast(enabled ? 'Dagelijkse digest aan.' : 'Dagelijkse digest uit.');
+};
+$('#digest-hour').onchange = async () => {
+  await saveSettings({ digestHour: Number($('#digest-hour').value) });
+  renderDigestDetail();
+};
 $('#btn-download-yesterday').onclick = downloadYesterday;
 $('#btn-settings').onclick = () => openDrawer(true);
 $('#btn-close').onclick = () => openDrawer(false);
