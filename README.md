@@ -149,8 +149,34 @@ src/
   digests.js  disk store for generated digest EPUBs
   published.js disk store for hand-published EPUBs (Publiceer naar OPDS)
   opds.js     OPDS (Atom) catalog feeds for CrossPoint's OPDS client
+  pocketbook.js emails the digest to a Send-to-PocketBook address
   public/     the web UI
 ```
+
+## Send-to-PocketBook (e.g. a PocketBook Verse Pro)
+
+Optional second delivery channel for the same nightly digest EPUB that's
+published to OPDS. Where the X4 needs a manual "Home → OPDS Browser" pull,
+PocketBook Cloud downloads mail sent to the device's own address
+automatically once it has WiFi.
+
+1. On the device: **Settings → Accounts and Synchronization →
+   Send-to-PocketBook**, register with a contact email, follow the
+   activation link it emails you, then copy the resulting
+   `username@pbsync.com` address.
+2. Fill in `POCKETBOOK_EMAIL` and `SMTP_*` in `.env` (see `.env.example`) —
+   any SMTP account/relay works.
+3. Set `SMTP_FROM` to the **same contact email** you registered with in step
+   1. PocketBook only delivers mail from a white-listed sender; anything else
+   triggers a one-time confirmation email instead of delivering the file —
+   approve that once if you'd rather send from a different address.
+
+Leave `POCKETBOOK_EMAIL` blank to skip this channel entirely — OPDS keeps
+working either way, and a failed/misconfigured Pocketbook send never blocks
+the OPDS digest or `lastDigestRun`. It fires automatically as part of the
+nightly digest run, and there's also a manual **Verstuur naar Pocketbook**
+button under **Extra opties**, next to **Publiceer naar OPDS**, for sending a
+hand-picked selection on demand.
 
 ## Roadmap / easy extensions
 
@@ -170,9 +196,10 @@ If you share the app (e.g. with a family member) but don't want them
 reconfiguring it or triggering a send/publish by accident, set
 `ADMIN_PASSWORD`. It's narrower than basic auth: it only gates the
 **instellingen** drawer and the **Extra opties** actions (Verstuur naar X4 /
-Publiceer naar OPDS); browsing feeds and Download .epub stay open. The
-password is typed once into a prompt and cached in the browser tab's session
-storage — it's convenience, not a real access-control boundary, so still put
+Publiceer naar OPDS / Verstuur naar Pocketbook); browsing feeds and Download
+.epub stay open. The password is typed once into a prompt and cached in the
+browser tab's session storage — it's convenience, not a real access-control
+boundary, so still put
 `BASIC_AUTH_USER`/`PASS` (or Tailscale) in front if the app is reachable by
 anyone untrusted.
 

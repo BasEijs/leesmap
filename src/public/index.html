@@ -83,6 +83,7 @@
       <div class="actions">
         <button class="primary" id="btn-send">Verstuur naar X4</button>
         <button class="secondary" id="btn-publish">Publiceer naar OPDS</button>
+        <button class="secondary" id="btn-pocketbook">Verstuur naar Pocketbook</button>
       </div>
 
       <div class="field">Gepubliceerd op OPDS
@@ -112,6 +113,13 @@
       <label class="check">Uur <select id="digest-hour"></select></label>
     </div>
     <small class="muted" id="digest-detail">Bouwt 's nachts een EPUB van nieuwe verhalen sinds de vorige run en publiceert die op de "Dagelijkse digest" OPDS-feed.</small>
+  </div>
+
+  <div class="field">Pocketbook (nachtelijke run)
+    <div class="row digest-row">
+      <label class="check"><input type="checkbox" id="pocketbook-nightly-enabled" /> Aan</label>
+    </div>
+    <small class="muted" id="pocketbook-nightly-detail">Mailt dezelfde nachtelijke digest ook naar het Send-to-PocketBook-adres.</small>
   </div>
 
   <div class="field">Correspondenten

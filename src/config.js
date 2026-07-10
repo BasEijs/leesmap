@@ -27,6 +27,21 @@ export const env = {
   // sends by accident, while everything else (browsing, download) stays open.
   adminPassword: process.env.ADMIN_PASSWORD || '',
   dataDir: process.env.DATA_DIR || '/data',
+  // Send-to-PocketBook: mailing the nightly digest to the device's own
+  // username@pbsync.com address (see scheduler.js). Unlike the X4's OPDS
+  // pull, PocketBook Cloud downloads to the device automatically once WiFi is
+  // on — no on-device browsing needed. Unset POCKETBOOK_EMAIL to skip this
+  // channel entirely; OPDS keeps working either way.
+  pocketbookEmail: process.env.POCKETBOOK_EMAIL || '',
+  smtpHost: process.env.SMTP_HOST || '',
+  smtpPort: Number(process.env.SMTP_PORT) || 587,
+  smtpUser: process.env.SMTP_USER || '',
+  smtpPass: process.env.SMTP_PASS || '',
+  // Must match (or already be on) the pbsync.com trusted-sender white list —
+  // PocketBook silently drops mail from senders it doesn't recognise, though
+  // the first one prompts an email confirmation to add them. Defaults to
+  // SMTP_USER since that's what most providers require as the envelope sender.
+  smtpFrom: process.env.SMTP_FROM || process.env.SMTP_USER || '',
 };
 
 const SETTINGS_PATH = join(env.dataDir, 'settings.json');
@@ -45,6 +60,12 @@ const defaults = {
   // `date > lastDigestRun` (not a fixed 24h window) so a missed night is caught
   // up and nothing ships twice. Null until the digest has run at least once.
   lastDigestRun: null,
+  // Whether the nightly digest also gets emailed to POCKETBOOK_EMAIL (see
+  // scheduler.js). Independent of digestEnabled and of the manual "Verstuur
+  // naar Pocketbook" button. Defaults to on (matches the original behaviour,
+  // before this toggle existed, of always sending whenever SMTP/POCKETBOOK_EMAIL
+  // were configured) — has no effect unless pocketbook.js's isConfigured() is true.
+  pocketbookNightlyEnabled: true,
   // Correspondent profile slugs shown as an avatar grid; clicking one loads
   // that correspondent's feed. Resolved to name/avatar at runtime.
   // Slugs come from decorrespondent.nl/correspondenten (the last path segment

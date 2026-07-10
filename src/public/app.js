@@ -8,6 +8,7 @@ const state = {
   // generalActive = true when the general "alle verhalen" tile is selected.
   correspondents: [], activeCorrs: new Set(), generalActive: false,
   lastDigestRun: null,
+  pocketbookConfigured: false,
   // Admin gate: adminRequired comes from the server (ADMIN_PASSWORD set or
   // not); adminPw is cached in sessionStorage once verified, so it survives
   // page reloads within a tab but not across browser restarts.
@@ -57,13 +58,24 @@ async function loadConfig() {
   state.lastDigestRun = c.lastDigestRun;
   renderDigestDetail();
   state.adminRequired = Boolean(c.adminRequired);
+  state.pocketbookConfigured = Boolean(c.pocketbookConfigured);
+  $('#btn-pocketbook').title = state.pocketbookConfigured
+    ? ''
+    : 'Niet geconfigureerd: zet POCKETBOOK_EMAIL/SMTP_* in .env.';
+  $('#pocketbook-nightly-enabled').checked = Boolean(c.pocketbookNightlyEnabled);
+  $('#pocketbook-nightly-enabled').disabled = !state.pocketbookConfigured;
+  $('#pocketbook-nightly-detail').textContent = state.pocketbookConfigured
+    ? 'Mailt dezelfde nachtelijke digest ook naar het Send-to-PocketBook-adres.'
+    : 'Niet geconfigureerd: zet POCKETBOOK_EMAIL/SMTP_* in .env.';
+  updateCount();
 }
 
 // ---------- Admin gate ----------
-// Guards instellingen + Extra opties (Verstuur naar X4 / Publiceer naar OPDS)
-// so the app can be shared without letting someone reconfigure it or trigger
-// a send/publish by accident. A cached-but-stale password (server restarted
-// with a new one) is handled by clearing the cache and re-prompting on 401.
+// Guards instellingen + Extra opties (Verstuur naar X4 / Publiceer naar OPDS /
+// Verstuur naar Pocketbook) so the app can be shared without letting someone
+// reconfigure it or trigger a send/publish by accident. A cached-but-stale
+// password (server restarted with a new one) is handled by clearing the cache
+// and re-prompting on 401.
 async function ensureAdmin() {
   if (!state.adminRequired) return true;
   if (state.adminPw) return true;
@@ -369,6 +381,7 @@ function updateCount() {
   $('#btn-send').disabled = n === 0;
   $('#btn-download').disabled = n === 0;
   $('#btn-publish').disabled = n === 0;
+  $('#btn-pocketbook').disabled = n === 0 || !state.pocketbookConfigured;
 }
 
 // ---------- Console ----------
@@ -524,6 +537,29 @@ async function publish() {
   }
 }
 
+// ---------- Send to Pocketbook ----------
+// Builds the current selection (same options as Verstuur/Download/Publiceer)
+// and emails it to the configured Send-to-PocketBook address (pocketbook.js)
+// instead of sending, downloading, or writing it to the OPDS store.
+async function sendPocketbook() {
+  const body = collect();
+  $('#btn-pocketbook').disabled = true;
+  try {
+    const res = await adminFetch('api/pocketbook', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const r = await res.json();
+    if (!res.ok) throw new Error(r.error || 'Versturen mislukt');
+    toast('Verstuurd naar Pocketbook.');
+  } catch (err) {
+    toast('Versturen naar Pocketbook mislukt: ' + err.message);
+  } finally {
+    $('#btn-pocketbook').disabled = state.selected.size === 0 || !state.pocketbookConfigured;
+  }
+}
+
 // ---------- Quick bundle: yesterday's main-feed articles ----------
 // Independent of whatever feed/selection is currently on screen: always pulls
 // the primary feed fresh and filters to the calendar day before today (in the
@@ -624,6 +660,7 @@ $('#sel-none').onclick = () => { state.selected.clear(); renderArticles(); updat
 $('#btn-send').onclick = send;
 $('#btn-download').onclick = download;
 $('#btn-publish').onclick = publish;
+$('#btn-pocketbook').onclick = sendPocketbook;
 
 for (let h = 0; h < 24; h++) $('#digest-hour').append(new Option(String(h).padStart(2, '0') + ':00', String(h)));
 $('#digest-enabled').onchange = async () => {
@@ -634,6 +671,11 @@ $('#digest-enabled').onchange = async () => {
 $('#digest-hour').onchange = async () => {
   await saveSettings({ digestHour: Number($('#digest-hour').value) });
   renderDigestDetail();
+};
+$('#pocketbook-nightly-enabled').onchange = async () => {
+  const enabled = $('#pocketbook-nightly-enabled').checked;
+  await saveSettings({ pocketbookNightlyEnabled: enabled });
+  toast(enabled ? 'Nachtelijk versturen naar Pocketbook aan.' : 'Nachtelijk versturen naar Pocketbook uit.');
 };
 $('#btn-download-yesterday').onclick = downloadYesterday;
 $('#btn-settings').onclick = async () => {

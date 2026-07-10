@@ -14,6 +14,7 @@ import { listDigests, digestFilePath } from './digests.js';
 import { listPublished, publishedFilePath, savePublished, deletePublished } from './published.js';
 import { rootCatalog, digestsFeed, publishedFeed } from './opds.js';
 import { startScheduler } from './scheduler.js';
+import { isConfigured as pocketbookConfigured, sendToPocketbook } from './pocketbook.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -71,16 +72,19 @@ app.get('/api/config', (req, res) => {
     digestHour: s.digestHour,
     lastDigestRun: s.lastDigestRun,
     adminRequired: Boolean(env.adminPassword),
+    pocketbookConfigured: pocketbookConfigured(),
+    pocketbookNightlyEnabled: s.pocketbookNightlyEnabled,
   });
 });
 
 app.post('/api/settings', requireAdmin, (req, res) => {
-  const { deviceIp, feeds, digestEnabled, digestHour } = req.body || {};
+  const { deviceIp, feeds, digestEnabled, digestHour, pocketbookNightlyEnabled } = req.body || {};
   const next = {};
   if (typeof deviceIp === 'string') next.deviceIp = deviceIp.trim();
   if (Array.isArray(feeds)) next.feeds = feeds;
   if (typeof digestEnabled === 'boolean') next.digestEnabled = digestEnabled;
   if (Number.isInteger(digestHour) && digestHour >= 0 && digestHour <= 23) next.digestHour = digestHour;
+  if (typeof pocketbookNightlyEnabled === 'boolean') next.pocketbookNightlyEnabled = pocketbookNightlyEnabled;
   res.json(saveSettings(next));
 });
 
@@ -211,6 +215,33 @@ app.post('/api/published', requireAdmin, async (req, res) => {
 app.delete('/api/published/:filename', requireAdmin, async (req, res) => {
   await deletePublished(req.params.filename);
   res.json({ ok: true, items: await listPublished() });
+});
+
+// --- Email a hand-picked selection to the Send-to-PocketBook address ---
+// Same build as /api/build and /api/published, but the result is mailed
+// (see pocketbook.js) instead of streamed back or written to the OPDS store.
+app.post('/api/pocketbook', requireAdmin, async (req, res) => {
+  if (!pocketbookConfigured()) {
+    return res.status(400).json({ error: 'Pocketbook niet geconfigureerd (POCKETBOOK_EMAIL/SMTP_* ontbreken).' });
+  }
+  const { urls = [], mode = 'bundle', images = 'strip', title } = req.body || {};
+  if (!urls.length) return res.status(400).json({ error: 'Geen artikelen geselecteerd.' });
+  try {
+    let out;
+    if (mode === 'single') {
+      const chapter = await articleToChapter(urls[0], { images, mediaBase, withAvatar: true });
+      out = await buildSingle(chapter);
+    } else {
+      const chapters = [];
+      for (const url of urls)
+        chapters.push(await articleToChapter(url, { images, mediaBase, withAvatar: true }));
+      out = await buildBundle(chapters, { title });
+    }
+    await sendToPocketbook(out.buffer, out.filename, title || out.title);
+    res.json({ ok: true, filename: out.filename });
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message });
+  }
 });
 
 // --- Build + send to the reader, streaming progress as NDJSON ---

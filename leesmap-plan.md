@@ -81,7 +81,7 @@ New `settings.json` fields, also exposed via `GET /api/config` and `POST /api/se
 ## Optional / later
 
 - Keep the existing direct `upload()` path available for **on-demand manual sends** (still works fine when the device is awake); it's just no longer the mechanism for the unattended nightly digest.
-- Retention/pruning of old digest EPUBs in the OPDS feed (e.g. keep last N).
+- ~~Retention/pruning of old digest EPUBs in the OPDS feed~~ — done: `pruneOldDigests()` in `digests.js`, run every hourly cron tick in `scheduler.js`, deletes digest EPUBs older than 7 days (by filename date). Runs independently of `digestEnabled` so the feed stays clean even if nightly generation is off.
 - Feed-level metadata (covers, per-digest titles like "De Correspondent — 9 juli") for nicer browsing on the reader.
 
 ## Build order (suggested)
@@ -120,6 +120,54 @@ Everything on the server side (§1–§3 above) is built and verified in isolati
 - **Device can't reach the feed at all** (error browsing the OPDS server) — check the leesmap host/port is actually reachable from the X4's network, same as any other reachability issue with `/upload`.
 - **"Dagelijkse digest" is empty** — check `digestEnabled` is `true` and at least one successful run has happened: `GET /api/config` includes `lastDigestRun`; `null` means it hasn't run yet (or every run so far failed before writing — check logs).
 - **Downloaded EPUB won't open / looks corrupt** — CrossPoint saves whatever bytes come back from the acquisition link with zero content-type validation (confirmed from firmware source), so `curl` the exact acquisition href yourself and confirm it 200s with real EPUB bytes before suspecting the device.
+
+## Send-to-PocketBook — second delivery channel (2026-07-10)
+
+Added alongside OPDS, for a PocketBook Verse Pro. Motivation: OPDS on the X4
+requires opening Home → OPDS Browser by hand every time (see "Correction"
+above) — fine for the X4, but the Verse Pro has a genuinely automatic
+alternative worth using instead of forcing it through the same OPDS-browse
+habit.
+
+**Mechanism (confirmed from PocketBook's own Send-to-PocketBook PDF, not
+guessed):** every PocketBook device can register its own `username@pbsync.com`
+address under Settings → Accounts and Synchronization → Send-to-PocketBook.
+Anything emailed there as an attachment downloads to the device's library
+automatically once it has an internet connection — no on-device browsing step,
+unlike OPDS. The one catch: PocketBook only accepts mail from a white-listed
+sender (the registration contact address is trusted by default); anything else
+gets a one-time confirmation email instead of silently delivering the file.
+
+**Implementation:** `pocketbook.js` — a thin nodemailer wrapper, gated by
+`POCKETBOOK_EMAIL` + `SMTP_*` env vars (unset = feature off entirely). Wired
+into `scheduler.js`'s `runDigest()` right after the EPUB is written to the
+digest store: the exact same buffer already destined for OPDS gets mailed as
+a second, independent channel. A failed/misconfigured send is caught and
+logged but never blocks the OPDS write or `lastDigestRun` advancing — OPDS
+stays the source of truth, Pocketbook is additive.
+
+Initially shipped automatic-only; a manual **Verstuur naar Pocketbook** button
+was added afterward under "Extra opties" (next to "Publiceer naar OPDS"),
+wired to a new `POST /api/pocketbook` route that builds the current selection
+the same way `/api/published` does and mails it via the same `pocketbook.js`
+module instead of writing it to the OPDS store. `/api/config` now also
+exposes `pocketbookConfigured` so the button disables itself with an
+explanatory title when `POCKETBOOK_EMAIL`/`SMTP_*` aren't set, rather than
+failing silently or always being clickable.
+
+A settings-drawer toggle (`pocketbookNightlyEnabled`, new persisted setting,
+default `true`) was added next so the *automatic nightly* send can be turned
+off independently of `digestEnabled` and of the manual button — e.g. if you
+want OPDS to keep running nightly but temporarily stop the Pocketbook emails
+without touching env vars. Checkbox disables itself (with an explanatory
+label) whenever `pocketbookConfigured()` is false, same pattern as the manual
+button.
+
+**Not yet verified against the real device** — built from PocketBook's
+official documentation, same as the OPDS publisher was before the X4 arrived.
+Needs: SMTP credentials, `POCKETBOOK_EMAIL` from a real Verse Pro
+registration, and a confirmation that `SMTP_FROM` lands in the white list
+(or that the one-time confirmation email gets approved).
 
 ## Related
 

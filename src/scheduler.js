@@ -14,7 +14,8 @@ import { env, loadSettings, saveSettings } from './config.js';
 import { parseFeed } from './feed.js';
 import { articleToChapter } from './article.js';
 import { buildBundle } from './epub.js';
-import { digestsDir } from './digests.js';
+import { digestsDir, pruneOldDigests } from './digests.js';
+import { isConfigured as pocketbookConfigured, sendToPocketbook } from './pocketbook.js';
 
 const mediaBase = `http://127.0.0.1:${env.port}`;
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
@@ -70,13 +71,25 @@ export async function runDigest() {
     return;
   }
 
-  const { buffer } = await buildBundle(chapters, { title: `De Correspondent — ${dutchDate(now)}` });
+  const title = `De Correspondent — ${dutchDate(now)}`;
+  const { buffer } = await buildBundle(chapters, { title });
 
   const dir = digestsDir();
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
   const filename = `${now.toISOString().slice(0, 10)}.epub`;
   writeFileSync(join(dir, filename), buffer);
   console.log(`[scheduler] Wrote ${filename} with ${chapters.length}/${items.length} article(s)`);
+
+  // Second delivery channel, same EPUB: OPDS (above) already has it, this is
+  // additive and never blocks lastDigestRun from advancing.
+  if (settings.pocketbookNightlyEnabled && pocketbookConfigured()) {
+    try {
+      await sendToPocketbook(buffer, filename, title);
+      console.log(`[scheduler] Emailed ${filename} to Pocketbook`);
+    } catch (err) {
+      console.error('[scheduler] Pocketbook send failed:', err.message);
+    }
+  }
 
   saveSettings({ lastDigestRun: now.toISOString() });
 }
@@ -86,6 +99,12 @@ export async function runDigest() {
 // (or enabling/disabling) in settings takes effect without a restart.
 export function startScheduler() {
   cron.schedule('0 * * * *', () => {
+    pruneOldDigests()
+      .then((removed) => {
+        if (removed.length) console.log(`[scheduler] Pruned ${removed.length} old digest(s):`, removed.join(', '));
+      })
+      .catch((err) => console.error('[scheduler] Prune failed:', err.message));
+
     const { digestHour } = loadSettings();
     const hour = Number.isInteger(digestHour) ? digestHour : 3;
     if (new Date().getHours() !== hour) return;
