@@ -145,6 +145,8 @@ src/
   epub.js     EPUB 2 building (single + bundle)
   device.js   probe + upload to the reader
   media.js    ephemeral image store used during a build
+  digests.js  disk store for generated digest EPUBs
+  opds.js     OPDS (Atom) catalog feeds for CrossPoint's OPDS client
   public/     the web UI
 ```
 

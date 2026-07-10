@@ -1,5 +1,5 @@
 import express from 'express';
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync, createReadStream } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -10,6 +10,9 @@ import { buildSingle, buildBundle } from './epub.js';
 import { probe, upload } from './device.js';
 import { get as getMedia } from './media.js';
 import { slugFromInput, resolveCorrespondent, resolveAll } from './correspondents.js';
+import { listDigests, digestFilePath } from './digests.js';
+import { rootCatalog, digestsFeed } from './opds.js';
+import { startScheduler } from './scheduler.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -46,14 +49,19 @@ app.get('/api/config', (req, res) => {
     primaryFeedConfigured: Boolean(env.primaryFeedUrl),
     // Authenticated either via the manual cookie or automatic email login.
     cookieConfigured: Boolean(env.cookie || (env.email && env.password)),
+    digestEnabled: s.digestEnabled,
+    digestHour: s.digestHour,
+    lastDigestRun: s.lastDigestRun,
   });
 });
 
 app.post('/api/settings', (req, res) => {
-  const { deviceIp, feeds } = req.body || {};
+  const { deviceIp, feeds, digestEnabled, digestHour } = req.body || {};
   const next = {};
   if (typeof deviceIp === 'string') next.deviceIp = deviceIp.trim();
   if (Array.isArray(feeds)) next.feeds = feeds;
+  if (typeof digestEnabled === 'boolean') next.digestEnabled = digestEnabled;
+  if (Number.isInteger(digestHour) && digestHour >= 0 && digestHour <= 23) next.digestHour = digestHour;
   res.json(saveSettings(next));
 });
 
@@ -230,6 +238,30 @@ app.post('/api/send', async (req, res) => {
   }
 });
 
+// --- OPDS (read-only; CrossPoint's OPDS client pulls the digest from here) ---
+// See opds.js for the feed shapes and why they're built this way. Additive
+// only — doesn't touch /api/send or the manual web UI.
+const OPDS_CONTENT_TYPE = 'application/atom+xml;profile=opds-catalog;charset=utf-8';
+
+app.get('/opds', (req, res) => {
+  res.setHeader('Content-Type', OPDS_CONTENT_TYPE);
+  res.end(rootCatalog());
+});
+
+app.get('/opds/digests', async (req, res) => {
+  const digests = await listDigests();
+  res.setHeader('Content-Type', OPDS_CONTENT_TYPE);
+  res.end(digestsFeed(digests));
+});
+
+app.get('/opds/digests/:filename', (req, res) => {
+  const filePath = digestFilePath(req.params.filename);
+  if (!filePath || !existsSync(filePath)) return res.status(404).end();
+  res.setHeader('Content-Type', 'application/epub+zip');
+  res.setHeader('Content-Disposition', `attachment; filename="${req.params.filename}"`);
+  createReadStream(filePath).pipe(res);
+});
+
 // --- Static files with cache-busting ---
 // A stale app.js/style.css served by Cloudflare or a caching proxy is why a new
 // build sometimes doesn't reach a client. Fix: version the asset URLs with a
@@ -268,3 +300,5 @@ app.listen(env.port, () => {
   if (!env.cookie && !(env.email && env.password))
     console.warn('  ! No DC auth: set DC_EMAIL + DC_PASSWORD (or DC_COOKIE) — full text will fail');
 });
+
+startScheduler();

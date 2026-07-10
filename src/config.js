@@ -32,6 +32,14 @@ const defaults = {
   deviceIp: process.env.X4_IP || '192.168.4.1',
   // Extra named feeds you save from the UI (collections, custom URLs…).
   feeds: [],
+  // Nightly digest (see scheduler.js): off by default, opt in from settings.
+  digestEnabled: false,
+  // Local hour (0-23, server time) the nightly digest cron fires.
+  digestHour: 3,
+  // ISO timestamp of the last successful digest run. Articles are filtered on
+  // `date > lastDigestRun` (not a fixed 24h window) so a missed night is caught
+  // up and nothing ships twice. Null until the digest has run at least once.
+  lastDigestRun: null,
   // Correspondent profile slugs shown as an avatar grid; clicking one loads
   // that correspondent's feed. Resolved to name/avatar at runtime.
   // Slugs come from decorrespondent.nl/correspondenten (the last path segment
