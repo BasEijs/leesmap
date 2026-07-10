@@ -145,7 +145,9 @@ src/
   epub.js     EPUB 2 building (single + bundle)
   device.js   probe + upload to the reader
   media.js    ephemeral image store used during a build
+  scheduler.js nightly digest generator (node-cron)
   digests.js  disk store for generated digest EPUBs
+  published.js disk store for hand-published EPUBs (Publiceer naar OPDS)
   opds.js     OPDS (Atom) catalog feeds for CrossPoint's OPDS client
   public/     the web UI
 ```
@@ -163,5 +165,15 @@ articles. The session cookie is cached under `./data` (git-ignored). Keep it on
 your LAN or Tailscale, or set `BASIC_AUTH_USER` / `BASIC_AUTH_PASS`. The
 `/media` route only holds transient article images during a build and expires
 them after ten minutes.
+
+If you share the app (e.g. with a family member) but don't want them
+reconfiguring it or triggering a send/publish by accident, set
+`ADMIN_PASSWORD`. It's narrower than basic auth: it only gates the
+**instellingen** drawer and the **Extra opties** actions (Verstuur naar X4 /
+Publiceer naar OPDS); browsing feeds and Download .epub stay open. The
+password is typed once into a prompt and cached in the browser tab's session
+storage — it's convenience, not a real access-control boundary, so still put
+`BASIC_AUTH_USER`/`PASS` (or Tailscale) in front if the app is reachable by
+anyone untrusted.
 
 MIT.

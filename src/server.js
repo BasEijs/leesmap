@@ -41,6 +41,23 @@ if (env.basicUser) {
   });
 }
 
+// --- Admin gate ---
+// Narrower than BASIC_AUTH_*: only guards settings changes and the
+// send/publish actions (see requireAdmin below), via a password typed once
+// into a prompt() and resent as a header. Unset ADMIN_PASSWORD disables the
+// gate entirely, same convention as basicUser above.
+function checkAdmin(req) {
+  return !env.adminPassword || req.headers['x-admin-password'] === env.adminPassword;
+}
+function requireAdmin(req, res, next) {
+  if (checkAdmin(req)) return next();
+  res.status(401).json({ error: 'Onjuist beheerderswachtwoord.' });
+}
+app.post('/api/admin/verify', (req, res) => {
+  const password = req.body?.password || '';
+  res.json({ ok: !env.adminPassword || password === env.adminPassword });
+});
+
 // --- Config & settings ---
 app.get('/api/config', (req, res) => {
   const s = loadSettings();
@@ -53,10 +70,11 @@ app.get('/api/config', (req, res) => {
     digestEnabled: s.digestEnabled,
     digestHour: s.digestHour,
     lastDigestRun: s.lastDigestRun,
+    adminRequired: Boolean(env.adminPassword),
   });
 });
 
-app.post('/api/settings', (req, res) => {
+app.post('/api/settings', requireAdmin, (req, res) => {
   const { deviceIp, feeds, digestEnabled, digestHour } = req.body || {};
   const next = {};
   if (typeof deviceIp === 'string') next.deviceIp = deviceIp.trim();
@@ -78,7 +96,7 @@ app.get('/api/correspondents', async (req, res) => {
 
 // Add a correspondent by slug, profile URL, or feed URL. We resolve it first
 // (which also validates it exists) before persisting the slug.
-app.post('/api/correspondents', async (req, res) => {
+app.post('/api/correspondents', requireAdmin, async (req, res) => {
   const slug = slugFromInput(req.body?.input);
   if (!slug) return res.status(400).json({ error: 'Geef een slug of profiel-URL.' });
   try {
@@ -97,7 +115,7 @@ app.post('/api/correspondents', async (req, res) => {
 // Reorder the saved correspondents. The body carries the full slug list in the
 // desired order; we intersect with what's already saved so this can only
 // reorder (or drop) existing entries, never add an unresolved slug.
-app.put('/api/correspondents', async (req, res) => {
+app.put('/api/correspondents', requireAdmin, async (req, res) => {
   const incoming = Array.isArray(req.body?.slugs) ? req.body.slugs : null;
   if (!incoming) return res.status(400).json({ error: 'Verwachtte { slugs: [...] }.' });
   const current = new Set(loadSettings().correspondents);
@@ -106,7 +124,7 @@ app.put('/api/correspondents', async (req, res) => {
   res.json({ correspondents: await resolveAll(list) });
 });
 
-app.delete('/api/correspondents/:slug', async (req, res) => {
+app.delete('/api/correspondents/:slug', requireAdmin, async (req, res) => {
   const list = loadSettings().correspondents.filter((s) => s !== req.params.slug);
   saveSettings({ correspondents: list });
   res.json({ correspondents: await resolveAll(list) });
@@ -169,7 +187,7 @@ app.get('/api/published', async (req, res) => {
   res.json({ items: await listPublished() });
 });
 
-app.post('/api/published', async (req, res) => {
+app.post('/api/published', requireAdmin, async (req, res) => {
   const { urls = [], mode = 'bundle', images = 'strip', title } = req.body || {};
   if (!urls.length) return res.status(400).json({ error: 'Geen artikelen geselecteerd.' });
   try {
@@ -190,14 +208,14 @@ app.post('/api/published', async (req, res) => {
   }
 });
 
-app.delete('/api/published/:filename', async (req, res) => {
+app.delete('/api/published/:filename', requireAdmin, async (req, res) => {
   await deletePublished(req.params.filename);
   res.json({ ok: true, items: await listPublished() });
 });
 
 // --- Build + send to the reader, streaming progress as NDJSON ---
 // body: { urls, mode, images, deviceIp, title }
-app.post('/api/send', async (req, res) => {
+app.post('/api/send', requireAdmin, async (req, res) => {
   const {
     urls = [],
     mode = 'bundle',

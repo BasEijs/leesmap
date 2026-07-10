@@ -25,6 +25,9 @@ services:
       # Optional HTTP basic auth for the UI (recommended if not behind Tailscale).
       BASIC_AUTH_USER: ${BASIC_AUTH_USER:-}
       BASIC_AUTH_PASS: ${BASIC_AUTH_PASS:-}
+      # Optional narrower gate: guards instellingen + send/publish only, so the
+      # app can be shared without letting someone reconfigure or send by accident.
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
     volumes:
       # A Docker-managed named volume (not a host bind mount). Docker initialises
       # it from the image, where /data is owned by the container's `node` user,

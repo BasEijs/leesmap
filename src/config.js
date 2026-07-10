@@ -21,6 +21,11 @@ export const env = {
   // Optional HTTP basic auth for the web UI itself.
   basicUser: process.env.BASIC_AUTH_USER || '',
   basicPass: process.env.BASIC_AUTH_PASS || '',
+  // Optional second gate, narrower than BASIC_AUTH_*: guards settings and the
+  // send/publish actions specifically, so the app can be shared (e.g. with a
+  // less technical family member) without letting them reconfigure or trigger
+  // sends by accident, while everything else (browsing, download) stays open.
+  adminPassword: process.env.ADMIN_PASSWORD || '',
   dataDir: process.env.DATA_DIR || '/data',
 };
 

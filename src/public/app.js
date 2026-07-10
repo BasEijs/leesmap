@@ -8,6 +8,11 @@ const state = {
   // generalActive = true when the general "alle verhalen" tile is selected.
   correspondents: [], activeCorrs: new Set(), generalActive: false,
   lastDigestRun: null,
+  // Admin gate: adminRequired comes from the server (ADMIN_PASSWORD set or
+  // not); adminPw is cached in sessionStorage once verified, so it survives
+  // page reloads within a tab but not across browser restarts.
+  adminRequired: false,
+  adminPw: sessionStorage.getItem('leesmap-admin-pw') || '',
 };
 
 // The general/main-feed tile: a De Correspondent monogram that loads the
@@ -51,6 +56,56 @@ async function loadConfig() {
   $('#digest-hour').value = String(Number.isInteger(c.digestHour) ? c.digestHour : 3);
   state.lastDigestRun = c.lastDigestRun;
   renderDigestDetail();
+  state.adminRequired = Boolean(c.adminRequired);
+}
+
+// ---------- Admin gate ----------
+// Guards instellingen + Extra opties (Verstuur naar X4 / Publiceer naar OPDS)
+// so the app can be shared without letting someone reconfigure it or trigger
+// a send/publish by accident. A cached-but-stale password (server restarted
+// with a new one) is handled by clearing the cache and re-prompting on 401.
+async function ensureAdmin() {
+  if (!state.adminRequired) return true;
+  if (state.adminPw) return true;
+  const password = window.prompt('Beheerderswachtwoord:');
+  if (password == null) return false;
+  try {
+    const r = await (await fetch('api/admin/verify', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ password }),
+    })).json();
+    if (!r.ok) {
+      toast('Onjuist wachtwoord.');
+      return false;
+    }
+  } catch {
+    toast('Kon wachtwoord niet controleren.');
+    return false;
+  }
+  state.adminPw = password;
+  sessionStorage.setItem('leesmap-admin-pw', password);
+  return true;
+}
+
+function adminHeaders() {
+  return state.adminPw ? { 'x-admin-password': state.adminPw } : {};
+}
+
+// Wraps a gated fetch: on 401 (stale/cleared password server-side) drops the
+// cached password so the next attempt re-prompts, instead of failing silently
+// forever.
+async function adminFetch(url, opts = {}) {
+  const res = await fetch(url, {
+    ...opts,
+    headers: { ...(opts.headers || {}), ...adminHeaders() },
+  });
+  if (res.status === 401) {
+    state.adminPw = '';
+    sessionStorage.removeItem('leesmap-admin-pw');
+    toast('Onjuist wachtwoord — probeer opnieuw.');
+  }
+  return res;
 }
 
 // "'s nachts om 03:00 · laatste run: 10 jul 2026" (or "nog niet gedraaid").
@@ -169,7 +224,7 @@ function renderSavedCorr() {
     const del = document.createElement('button');
     del.className = 'sc-del'; del.textContent = 'verwijder';
     del.onclick = async () => {
-      const r = await (await fetch('api/correspondents/' + encodeURIComponent(c.slug), { method: 'DELETE' })).json();
+      const r = await (await adminFetch('api/correspondents/' + encodeURIComponent(c.slug), { method: 'DELETE' })).json();
       state.correspondents = r.correspondents || [];
       state.activeCorrs.delete(c.slug);
       renderCorrespondents();
@@ -189,7 +244,7 @@ async function reorderCorr(from, to) {
   const [moved] = slugs.splice(from, 1);
   slugs.splice(to, 0, moved);
   try {
-    const r = await (await fetch('api/correspondents', {
+    const r = await (await adminFetch('api/correspondents', {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ slugs }),
@@ -233,7 +288,7 @@ function renderSavedFeeds() {
 }
 
 async function saveSettings(patch) {
-  const r = await (await fetch('api/settings', {
+  const r = await (await adminFetch('api/settings', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(patch),
@@ -335,7 +390,7 @@ async function send() {
   con.innerHTML = '';
   conLine(`<span class="rule">── ${body.mode === 'bundle' ? 'bundel' : 'per artikel'} · ${body.images === 'embed' ? 'met beeld' : 'tekst'} · → ${body.deviceIp} ──</span>`);
   try {
-    const res = await fetch('api/send', {
+    const res = await adminFetch('api/send', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(body),
@@ -441,7 +496,7 @@ function renderPublished(items) {
     const b = document.createElement('button');
     b.textContent = 'verwijder';
     b.onclick = async () => {
-      const r = await (await fetch('api/published/' + encodeURIComponent(it.filename), { method: 'DELETE' })).json();
+      const r = await (await adminFetch('api/published/' + encodeURIComponent(it.filename), { method: 'DELETE' })).json();
       renderPublished(r.items || []);
     };
     li.append(b);
@@ -453,7 +508,7 @@ async function publish() {
   const body = collect();
   $('#btn-publish').disabled = true;
   try {
-    const res = await fetch('api/published', {
+    const res = await adminFetch('api/published', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(body),
@@ -546,7 +601,7 @@ $('#nc-add').onclick = async () => {
   if (!input) return toast('Slug of profiel-URL nodig.');
   $('#nc-add').disabled = true;
   try {
-    const res = await fetch('api/correspondents', {
+    const res = await adminFetch('api/correspondents', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ input }),
@@ -581,8 +636,20 @@ $('#digest-hour').onchange = async () => {
   renderDigestDetail();
 };
 $('#btn-download-yesterday').onclick = downloadYesterday;
-$('#btn-settings').onclick = () => openDrawer(true);
+$('#btn-settings').onclick = async () => {
+  if (!(await ensureAdmin())) return;
+  openDrawer(true);
+};
 $('#btn-close').onclick = () => openDrawer(false);
+// "Extra opties" (Verstuur naar X4 / Publiceer naar OPDS) is gated the same
+// way: intercept the click that would open it and only let it through once
+// ensureAdmin() resolves. Collapsing is always allowed.
+$('#extra-summary').addEventListener('click', (e) => {
+  const details = $('#extra-opties');
+  if (details.open) return;
+  e.preventDefault();
+  ensureAdmin().then((ok) => { if (ok) details.open = true; });
+});
 $('#scrim').onclick = () => openDrawer(false);
 $('#chip-device').onclick = () => probeDevice();
 $('#btn-test').onclick = async () => {
