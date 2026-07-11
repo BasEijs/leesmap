@@ -92,7 +92,7 @@ export async function buildSingle(chapter) {
   );
   const authorSlug = chapter.author ? slug(chapter.author) : '';
   const filename = authorSlug
-    ? `dc-${authorSlug}-${slug(chapter.title)}.epub`
+    ? `dc-${slug(chapter.title)}-${authorSlug}.epub`
     : `dc-${slug(chapter.title)}.epub`;
   return { buffer, filename, title: chapter.title };
 }
