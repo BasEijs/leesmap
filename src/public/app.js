@@ -382,6 +382,26 @@ function updateCount() {
   $('#btn-download').disabled = n === 0;
   $('#btn-publish').disabled = n === 0;
   $('#btn-pocketbook').disabled = n === 0 || !state.pocketbookConfigured;
+
+  // A bundle needs at least two articles. With exactly one selected, force
+  // "Per artikel" so the UI matches what the server actually builds; restore
+  // "Bundel" once a second article is selected again (but only if we're the
+  // ones who switched it off — leave an explicit "Per artikel" choice alone).
+  const modeBundle = document.querySelector('input[name=mode][value=bundle]');
+  const modeSingle = document.querySelector('input[name=mode][value=single]');
+  if (n === 1) {
+    if (modeBundle.checked) {
+      state.restoreBundle = true;
+      modeSingle.checked = true;
+    }
+    modeBundle.disabled = true;
+  } else {
+    modeBundle.disabled = false;
+    if (state.restoreBundle) {
+      modeBundle.checked = true;
+      state.restoreBundle = false;
+    }
+  }
 }
 
 // ---------- Console ----------

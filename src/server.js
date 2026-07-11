@@ -16,6 +16,13 @@ import { rootCatalog, digestsFeed, publishedFeed } from './opds.js';
 import { startScheduler } from './scheduler.js';
 import { isConfigured as pocketbookConfigured, sendToPocketbook } from './pocketbook.js';
 
+// A "bundle" of one article is just that article with extra ceremony (author-led
+// filename, selection-style cover). Treat a single URL as 'single' regardless of
+// what the client's mode toggle says, so the UI can never produce that.
+function isSingle(mode, urls) {
+  return mode === 'single' || urls.length === 1;
+}
+
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const app = express();
 app.use(express.json({ limit: '1mb' }));
@@ -164,7 +171,7 @@ app.post('/api/build', async (req, res) => {
   if (!urls.length) return res.status(400).json({ error: 'Geen artikelen geselecteerd.' });
   try {
     let out;
-    if (mode === 'single') {
+    if (isSingle(mode, urls)) {
       const chapter = await articleToChapter(urls[0], { images, mediaBase, withAvatar: true });
       out = await buildSingle(chapter);
     } else {
@@ -196,7 +203,7 @@ app.post('/api/published', requireAdmin, async (req, res) => {
   if (!urls.length) return res.status(400).json({ error: 'Geen artikelen geselecteerd.' });
   try {
     let out;
-    if (mode === 'single') {
+    if (isSingle(mode, urls)) {
       const chapter = await articleToChapter(urls[0], { images, mediaBase, withAvatar: true });
       out = await buildSingle(chapter);
     } else {
@@ -228,7 +235,7 @@ app.post('/api/pocketbook', requireAdmin, async (req, res) => {
   if (!urls.length) return res.status(400).json({ error: 'Geen artikelen geselecteerd.' });
   try {
     let out;
-    if (mode === 'single') {
+    if (isSingle(mode, urls)) {
       const chapter = await articleToChapter(urls[0], { images, mediaBase, withAvatar: true });
       out = await buildSingle(chapter);
     } else {
@@ -283,7 +290,7 @@ app.post('/api/send', requireAdmin, async (req, res) => {
       return chapter;
     };
 
-    if (mode === 'single') {
+    if (isSingle(mode, urls)) {
       for (const url of urls) {
         try {
           const chapter = await prepare(url);

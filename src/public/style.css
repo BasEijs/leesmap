@@ -205,6 +205,7 @@ span.corr-av-sm { display: grid; place-items: center; font-size: 0.8rem; }
 .opt label { display: block; padding: 0.25rem 0; }
 .opt input[type="radio"] { accent-color: var(--accent); margin-right: 0.4rem; }
 .opt small { display: block; margin-left: 1.4rem; color: var(--ink-2); font-size: 0.78rem; }
+.opt label:has(input:disabled) { opacity: 0.4; }
 
 .title-in {
   width: 100%; background: var(--paper-2); border: 1px solid var(--rule);
