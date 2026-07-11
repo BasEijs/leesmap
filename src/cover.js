@@ -1,8 +1,7 @@
 // Generates a clean typographic cover image (JPEG) for an EPUB, so the reader
 // shows a real cover instead of scraping text off the first page. Deliberately
-// high-contrast white-on-black with generous type: that's what survives a small
-// greyscale e-ink panel and its thumbnail rendering, and it keeps the X4's lock
-// screen mostly dark instead of a bright white rectangle.
+// high-contrast black-on-white with generous type: that's what survives a small
+// greyscale e-ink panel and its thumbnail rendering.
 //
 // Fonts are bundled under src/fonts (PT Serif, OFL) and registered by explicit
 // family names, so the output is identical in local dev and in the slim
@@ -29,10 +28,9 @@ function ensureFonts() {
 const W = 1200;
 const H = 1600;
 const MARGIN = 110;
-const INK = '#f5f5f5';
-const MUTED = '#9a9a9a';
-const PAPER = '#0a0a0a';
-const AVATAR_BG = '#262626'; // placeholder-monogram fill, distinct from the pure-black page
+const INK = '#141414';
+const MUTED = '#5c5c5c';
+const PAPER = '#ffffff';
 
 // Draw letter-spaced, centred caps (for the small "DE CORRESPONDENT" label).
 function drawSpacedCaps(ctx, text, cx, y, size, tracking) {
@@ -65,9 +63,9 @@ function drawAvatar(ctx, img, cx, cy, r, initials) {
     const dh = img.height * s;
     ctx.drawImage(img, cx - dw / 2, cy - dh / 2, dw, dh);
   } else {
-    ctx.fillStyle = AVATAR_BG;
+    ctx.fillStyle = '#ececec';
     ctx.fillRect(cx - r, cy - r, 2 * r, 2 * r);
-    ctx.fillStyle = INK;
+    ctx.fillStyle = MUTED;
     ctx.font = `${Math.round(r * 0.9)}px ${BOLD}`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -135,10 +133,10 @@ async function drawAvatarRow(ctx, portraits, cx, top) {
     ctx.save();
     ctx.beginPath();
     ctx.arc(x, cy, r, 0, Math.PI * 2);
-    ctx.fillStyle = AVATAR_BG;
+    ctx.fillStyle = '#ececec';
     ctx.fill();
     ctx.restore();
-    ctx.fillStyle = INK;
+    ctx.fillStyle = MUTED;
     ctx.font = `${Math.round(r * 0.62)}px ${BOLD}`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -315,7 +313,7 @@ export async function coverImage({
   // JPEG, not PNG: PocketBook's sleep-screen ("show the current book's cover
   // when locked") only renders JPEG covers. A PNG shows in the library grid but
   // the lock screen silently falls back to the default wallpaper. High quality
-  // keeps the crisp white-on-black type clean on the e-ink panel.
+  // keeps the crisp black-on-white type clean on the e-ink panel.
   return canvas.toBuffer('image/jpeg', 92);
 }
 
