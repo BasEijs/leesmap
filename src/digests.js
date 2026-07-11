@@ -6,8 +6,8 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { env } from './config.js';
 
-// One file per calendar day: 2026-07-09.epub
-const DIGEST_FILENAME_RE = /^\d{4}-\d{2}-\d{2}\.epub$/;
+// One file per calendar day, Dutch date order: 10-07-2026.epub
+const DIGEST_FILENAME_RE = /^(\d{2})-(\d{2})-(\d{4})\.epub$/;
 
 // Keep the OPDS feed from growing forever: drop digest EPUBs past this age.
 const MAX_DIGEST_AGE_DAYS = 7;
@@ -22,6 +22,13 @@ async function ensureDigestsDir() {
   return dir;
 }
 
+// DD-MM-YYYY.epub -> YYYY-MM-DD, so dates compare/sort correctly regardless
+// of the filename's display order.
+function isoDate(filename) {
+  const m = filename.match(DIGEST_FILENAME_RE);
+  return m ? `${m[3]}-${m[2]}-${m[1]}` : null;
+}
+
 // List digest EPUBs, newest first.
 export async function listDigests() {
   const dir = await ensureDigestsDir();
@@ -29,7 +36,7 @@ export async function listDigests() {
   const withStats = await Promise.all(
     names.map(async (filename) => {
       const s = await stat(join(dir, filename));
-      return { filename, date: filename.slice(0, 10), size: s.size, mtime: s.mtime };
+      return { filename, date: isoDate(filename), size: s.size, mtime: s.mtime };
     })
   );
   return withStats.sort((a, b) => b.date.localeCompare(a.date));
@@ -51,7 +58,7 @@ export async function pruneOldDigests() {
   cutoff.setDate(cutoff.getDate() - MAX_DIGEST_AGE_DAYS);
   const cutoffStr = cutoff.toISOString().slice(0, 10);
   const names = (await readdir(dir)).filter((n) => DIGEST_FILENAME_RE.test(n));
-  const removed = names.filter((n) => n.slice(0, 10) < cutoffStr);
+  const removed = names.filter((n) => isoDate(n) < cutoffStr);
   await Promise.all(removed.map((n) => unlink(join(dir, n)).catch(() => {})));
   return removed;
 }

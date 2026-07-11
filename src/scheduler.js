@@ -21,7 +21,20 @@ const mediaBase = `http://127.0.0.1:${env.port}`;
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
 function dutchDate(d) {
-  return new Intl.DateTimeFormat('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' }).format(d);
+  return new Intl.DateTimeFormat('nl-NL', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/Amsterdam' }).format(d);
+}
+
+// DD-MM-YYYY in Europe/Amsterdam, not UTC — a straight toISOString() slice
+// would shift dates near midnight local time.
+function localDateStr(d) {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/Amsterdam',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  }).formatToParts(d);
+  const get = (type) => parts.find((p) => p.type === type).value;
+  return `${get('day')}-${get('month')}-${get('year')}`;
 }
 
 // Exported for manual/test invocation; startScheduler() below is what cron calls.
@@ -58,9 +71,11 @@ export async function runDigest() {
   }
 
   const chapters = [];
+  const includedDates = [];
   for (const item of items) {
     try {
       chapters.push(await articleToChapter(item.link, { images: 'strip', mediaBase, withAvatar: true }));
+      includedDates.push(new Date(item.date));
     } catch (err) {
       console.error(`[scheduler] Skipping "${item.title}":`, err.message);
     }
@@ -71,12 +86,16 @@ export async function runDigest() {
     return;
   }
 
-  const title = `De Correspondent — ${dutchDate(now)}`;
+  // Name the digest after the articles it contains (most recent one), not the
+  // 03:00 run time — articles are typically published the day before the run.
+  const digestDate = new Date(Math.max(...includedDates.map((d) => d.getTime())));
+
+  const title = `De Correspondent — ${dutchDate(digestDate)}`;
   const { buffer } = await buildBundle(chapters, { title });
 
   const dir = digestsDir();
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-  const filename = `${now.toISOString().slice(0, 10)}.epub`;
+  const filename = `${localDateStr(digestDate)}.epub`;
   writeFileSync(join(dir, filename), buffer);
   console.log(`[scheduler] Wrote ${filename} with ${chapters.length}/${items.length} article(s)`);
 
