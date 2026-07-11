@@ -5,6 +5,7 @@
 
 import epubPkg from 'epub-gen-memory';
 import { coverFile } from './cover.js';
+import { localDateStr } from './dateutil.js';
 const epub = epubPkg.default ?? epubPkg; // CJS/ESM interop
 
 // "6 juli 2026" — a human date for the cover footer.
@@ -145,9 +146,12 @@ export async function buildBundle(chapters, { title } = {}) {
   // Filename carries the correspondent names too (same list as the cover), so
   // a downloaded bundle is identifiable without opening it — "selectie" is
   // only needed as a fallback label when there are no authors to name.
+  // Date is DD-MM-YYYY (Europe/Amsterdam), same convention as the nightly
+  // digest store in digests.js/scheduler.js.
   const authorsSlug = autoTitle ? slug(autoTitle) : '';
+  const dateStr = localDateStr();
   const filename = authorsSlug
-    ? `dc-${authorsSlug}-${today}.epub`
-    : `dc-selectie-${today}.epub`;
+    ? `dc-${authorsSlug}-${dateStr}.epub`
+    : `dc-selectie-${dateStr}.epub`;
   return { buffer, filename, title: bookTitle };
 }

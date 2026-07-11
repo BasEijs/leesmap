@@ -16,25 +16,13 @@ import { articleToChapter } from './article.js';
 import { buildBundle } from './epub.js';
 import { digestsDir, pruneOldDigests } from './digests.js';
 import { isConfigured as pocketbookConfigured, sendToPocketbook } from './pocketbook.js';
+import { localDateStr } from './dateutil.js';
 
 const mediaBase = `http://127.0.0.1:${env.port}`;
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
 function dutchDate(d) {
   return new Intl.DateTimeFormat('nl-NL', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/Amsterdam' }).format(d);
-}
-
-// DD-MM-YYYY in Europe/Amsterdam, not UTC — a straight toISOString() slice
-// would shift dates near midnight local time.
-function localDateStr(d) {
-  const parts = new Intl.DateTimeFormat('en-GB', {
-    timeZone: 'Europe/Amsterdam',
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  }).formatToParts(d);
-  const get = (type) => parts.find((p) => p.type === type).value;
-  return `${get('day')}-${get('month')}-${get('year')}`;
 }
 
 // Exported for manual/test invocation; startScheduler() below is what cron calls.
