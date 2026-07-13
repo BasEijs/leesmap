@@ -14,7 +14,7 @@ document.getElementById('opts').addEventListener('click', (e) => {
 
 function setStatus(text, kind) {
   statusEl.textContent = text;
-  statusEl.className = kind || '';
+  statusEl.className = `ext-status ${kind || ''}`.trim();
 }
 
 async function getSettings() {
