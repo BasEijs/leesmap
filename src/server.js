@@ -6,6 +6,7 @@ import { dirname, join } from 'node:path';
 import { env, loadSettings, saveSettings } from './config.js';
 import { parseFeed, parseCombinedFeed } from './feed.js';
 import { articleToChapter } from './article.js';
+import { bdArticleToChapter } from './bd-article.js';
 import { buildSingle, buildBundle } from './epub.js';
 import { probe, upload } from './device.js';
 import { get as getMedia } from './media.js';
@@ -195,7 +196,7 @@ app.post('/api/build', async (req, res) => {
 // Same build as /api/build, but the result is written to the published store
 // instead of streamed back, so the ereader can pull it over OPDS later.
 app.get('/api/published', async (req, res) => {
-  res.json({ items: await listPublished() });
+  res.json({ items: await listPublished('decorrespondent') });
 });
 
 app.post('/api/published', requireAdmin, async (req, res) => {
@@ -212,16 +213,34 @@ app.post('/api/published', requireAdmin, async (req, res) => {
         chapters.push(await articleToChapter(url, { images, mediaBase, withAvatar: true }));
       out = await buildBundle(chapters, { title });
     }
-    const record = await savePublished(out.buffer, title || out.title);
-    res.json({ ok: true, items: await listPublished(), published: record });
+    const record = await savePublished(out.buffer, title || out.title, 'decorrespondent');
+    res.json({ ok: true, items: await listPublished('decorrespondent'), published: record });
   } catch (err) {
     res.status(err.status || 500).json({ error: err.message });
   }
 });
 
 app.delete('/api/published/:filename', requireAdmin, async (req, res) => {
-  await deletePublished(req.params.filename);
-  res.json({ ok: true, items: await listPublished() });
+  await deletePublished(req.params.filename, 'decorrespondent');
+  res.json({ ok: true, items: await listPublished('decorrespondent') });
+});
+
+// --- Brabants Dagblad: receive one already-extracted article from the
+// browser extension (see extension/), bind it, and publish it straight to
+// its own OPDS "Gepubliceerd — Brabants Dagblad" shelf. No fetching/session
+// here — the extension's tab was already logged into bd.nl normally, so the
+// paywalled body text is already in the HTML it sends.
+app.post('/api/bd/import', requireAdmin, async (req, res) => {
+  const { url, html } = req.body || {};
+  if (!url || !html) return res.status(400).json({ error: 'Verwachtte { url, html }.' });
+  try {
+    const chapter = bdArticleToChapter(html, url);
+    const out = await buildSingle(chapter);
+    const record = await savePublished(out.buffer, out.title, 'bd');
+    res.json({ ok: true, title: out.title, published: record });
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message });
+  }
 });
 
 // --- Email a hand-picked selection to the Send-to-PocketBook address ---
@@ -352,14 +371,17 @@ app.get('/opds/digests/:filename', (req, res) => {
   createReadStream(filePath).pipe(res);
 });
 
-app.get('/opds/published', async (req, res) => {
-  const items = await listPublished();
+// `:source` is validated against a known list inside published.js (anything
+// else quietly falls back to 'decorrespondent'), so this can't be used to
+// read arbitrary directories.
+app.get('/opds/published/:source', async (req, res) => {
+  const items = await listPublished(req.params.source);
   res.setHeader('Content-Type', OPDS_CONTENT_TYPE);
-  res.end(publishedFeed(items));
+  res.end(publishedFeed(items, req.params.source));
 });
 
-app.get('/opds/published/:filename', (req, res) => {
-  const filePath = publishedFilePath(req.params.filename);
+app.get('/opds/published/:source/:filename', (req, res) => {
+  const filePath = publishedFilePath(req.params.filename, req.params.source);
   if (!filePath || !existsSync(filePath)) return res.status(404).end();
   res.setHeader('Content-Type', 'application/epub+zip');
   res.setHeader('Content-Disposition', `attachment; filename="${req.params.filename}"`);

@@ -37,11 +37,18 @@ export function rootCatalog() {
     <link rel="subsection" href="/opds/digests" type="application/atom+xml;profile=opds-catalog"/>
   </entry>
   <entry>
-    <title>Gepubliceerd</title>
-    <id>urn:leesmap:published</id>
+    <title>Gepubliceerd — De Correspondent</title>
+    <id>urn:leesmap:published:decorrespondent</id>
     <updated>${esc(now)}</updated>
-    <content type="text">Handmatig gepubliceerde selecties.</content>
-    <link rel="subsection" href="/opds/published" type="application/atom+xml;profile=opds-catalog"/>
+    <content type="text">Handmatig gepubliceerde De Correspondent-selecties.</content>
+    <link rel="subsection" href="/opds/published/decorrespondent" type="application/atom+xml;profile=opds-catalog"/>
+  </entry>
+  <entry>
+    <title>Gepubliceerd — Brabants Dagblad</title>
+    <id>urn:leesmap:published:bd</id>
+    <updated>${esc(now)}</updated>
+    <content type="text">Artikelen verstuurd via de Brabants Dagblad-extensie.</content>
+    <link rel="subsection" href="/opds/published/bd" type="application/atom+xml;profile=opds-catalog"/>
   </entry>
 </feed>
 `;
@@ -77,23 +84,31 @@ export function digestsFeed(digests) {
 `;
 }
 
-// Acquisition feed listing hand-published EPUBs, newest first. Titles come
-// from whatever the user typed (or the auto-generated bundle title) rather
-// than being derived from the filename/date like digestsFeed does.
-export function publishedFeed(items) {
+const SOURCE_LABELS = {
+  decorrespondent: 'Gepubliceerd — De Correspondent',
+  bd: 'Gepubliceerd — Brabants Dagblad',
+};
+
+// Acquisition feed listing hand-published EPUBs for one source, newest first.
+// Titles come from whatever the user typed (or the auto-generated bundle
+// title, or the extracted BD article title) rather than being derived from
+// the filename/date like digestsFeed does.
+export function publishedFeed(items, source = 'decorrespondent') {
   const now = new Date().toISOString();
+  const href = `/opds/published/${source}`;
   const entries = items
     .map(
       (it) => `
   <entry>
     <title>${esc(it.title)}</title>
-    <id>urn:leesmap:published:${esc(it.filename)}</id>
+    <id>urn:leesmap:published:${esc(source)}:${esc(it.filename)}</id>
     <updated>${esc(it.publishedAt)}</updated>
-    <link rel="http://opds-spec.org/acquisition" href="${esc(`/opds/published/${it.filename}`)}" type="application/epub+zip"/>
+    <link rel="http://opds-spec.org/acquisition" href="${esc(`${href}/${it.filename}`)}" type="application/epub+zip"/>
   </entry>`
     )
     .join('');
-  return `${feedHeader({ id: 'urn:leesmap:published', title: 'Gepubliceerd', updated: now, href: '/opds/published' })}${entries}
+  const title = SOURCE_LABELS[source] || 'Gepubliceerd';
+  return `${feedHeader({ id: `urn:leesmap:published:${source}`, title, updated: now, href })}${entries}
 </feed>
 `;
 }

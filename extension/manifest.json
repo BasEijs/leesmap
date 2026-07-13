@@ -1,0 +1,13 @@
+{
+  "manifest_version": 3,
+  "name": "Leesmap — Brabants Dagblad",
+  "version": "1.0.0",
+  "description": "Verstuur het huidige Brabants Dagblad-artikel naar je eigen Leesmap-server; verschijnt als EPUB op de OPDS-plank.",
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Verstuur naar Leesmap"
+  },
+  "options_page": "options.html",
+  "permissions": ["activeTab", "scripting", "storage"],
+  "host_permissions": ["<all_urls>"]
+}

@@ -44,8 +44,9 @@ function slug(s) {
 
 function chapterHtml(ch) {
   const byline = ch.author ? `<p class="dc-byline">${ch.author}</p>` : '';
+  const publisher = ch.publisher || 'De Correspondent';
   const source = ch.sourceUrl
-    ? `<p class="dc-source">Bron: <a href="${ch.sourceUrl}">De Correspondent</a></p>`
+    ? `<p class="dc-source">Bron: <a href="${ch.sourceUrl}">${publisher}</a></p>`
     : '';
   return `${byline}${ch.content}${source}`;
 }
@@ -69,13 +70,18 @@ async function render(options, chapters) {
   );
 }
 
-// One article -> one EPUB.
+// One article -> one EPUB. `chapter.publisher`/`chapter.source` let a non-De
+// Correspondent source (e.g. Brabants Dagblad, see bd-article.js) brand its
+// own cover/filename instead of defaulting to De Correspondent everywhere.
 export async function buildSingle(chapter) {
+  const publisher = chapter.publisher || 'De Correspondent';
+  const prefix = chapter.source || 'dc';
   const buffer = await render(
     {
       title: chapter.title,
-      author: chapter.author || 'De Correspondent',
+      author: chapter.author || publisher,
       description: chapter.excerpt,
+      publisher,
       cover: await coverFile({
         title: chapter.title,
         subtitle: chapter.author || undefined,
@@ -84,6 +90,7 @@ export async function buildSingle(chapter) {
         // when we matched one, otherwise an initials monogram).
         portrait: true,
         avatar: chapter.avatar || undefined,
+        kicker: publisher,
       }),
       // Single article: the chapter title would just repeat the book title.
       prependChapterTitles: false,
@@ -92,8 +99,8 @@ export async function buildSingle(chapter) {
   );
   const authorSlug = chapter.author ? slug(chapter.author) : '';
   const filename = authorSlug
-    ? `dc-${slug(chapter.title)}-${authorSlug}.epub`
-    : `dc-${slug(chapter.title)}.epub`;
+    ? `${prefix}-${slug(chapter.title)}-${authorSlug}.epub`
+    : `${prefix}-${slug(chapter.title)}.epub`;
   return { buffer, filename, title: chapter.title };
 }
 

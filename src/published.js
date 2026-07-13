@@ -2,6 +2,10 @@
 // the UI drops a one-off selection here, separate from the nightly digest
 // store (digests.js) so a manual publish never collides with or gets
 // overwritten by that night's automatic run.
+//
+// Split by source into its own subfolder (published/<source>/...) — enough
+// separation to keep De Correspondent and Brabants Dagblad shelves apart on
+// the OPDS side without needing source-prefixed filenames.
 
 import { readdir, stat, mkdir, writeFile, readFile, unlink } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
@@ -11,12 +15,19 @@ import { env } from './config.js';
 // <timestamp>-<slug>.epub, e.g. 20260710T181234-mijn-selectie.epub
 const PUBLISHED_FILENAME_RE = /^[0-9]{8}T[0-9]{6}-[a-z0-9-]+\.epub$/;
 
-export function publishedDir() {
-  return join(env.dataDir, 'published');
+// Only these may appear as a path segment — guards against path traversal via
+// the `source` value the same way PUBLISHED_FILENAME_RE guards `filename`.
+const SOURCES = ['decorrespondent', 'bd'];
+function safeSource(source) {
+  return SOURCES.includes(source) ? source : 'decorrespondent';
 }
 
-async function ensurePublishedDir() {
-  const dir = publishedDir();
+export function publishedDir(source = 'decorrespondent') {
+  return join(env.dataDir, 'published', safeSource(source));
+}
+
+async function ensurePublishedDir(source) {
+  const dir = publishedDir(source);
   if (!existsSync(dir)) await mkdir(dir, { recursive: true });
   return dir;
 }
@@ -38,8 +49,8 @@ function slug(s) {
 // Save a built EPUB buffer under a fresh, collision-free filename, alongside a
 // small JSON sidecar carrying the human title (filenames are slugged/truncated
 // and can't round-trip that on their own).
-export async function savePublished(buffer, title) {
-  const dir = await ensurePublishedDir();
+export async function savePublished(buffer, title, source = 'decorrespondent') {
+  const dir = await ensurePublishedDir(source);
   const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+Z$/, '');
   const filename = `${stamp}-${slug(title)}.epub`;
   const publishedAt = new Date().toISOString();
@@ -49,8 +60,8 @@ export async function savePublished(buffer, title) {
 }
 
 // List published EPUBs, newest first.
-export async function listPublished() {
-  const dir = await ensurePublishedDir();
+export async function listPublished(source = 'decorrespondent') {
+  const dir = await ensurePublishedDir(source);
   const names = (await readdir(dir)).filter((n) => PUBLISHED_FILENAME_RE.test(n));
   const withMeta = await Promise.all(
     names.map(async (filename) => {
@@ -74,14 +85,14 @@ export async function listPublished() {
 
 // Resolve a requested filename to a safe path inside the published store, or
 // null if it doesn't match the expected shape (guards against path traversal).
-export function publishedFilePath(filename) {
+export function publishedFilePath(filename, source = 'decorrespondent') {
   if (!PUBLISHED_FILENAME_RE.test(filename)) return null;
-  return join(publishedDir(), filename);
+  return join(publishedDir(source), filename);
 }
 
-export async function deletePublished(filename) {
+export async function deletePublished(filename, source = 'decorrespondent') {
   if (!PUBLISHED_FILENAME_RE.test(filename)) return false;
-  const dir = publishedDir();
+  const dir = publishedDir(source);
   await unlink(join(dir, filename)).catch(() => {});
   await unlink(sidecarPath(dir, filename)).catch(() => {});
   return true;

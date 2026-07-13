@@ -147,11 +147,34 @@ src/
   media.js    ephemeral image store used during a build
   scheduler.js nightly digest generator (node-cron)
   digests.js  disk store for generated digest EPUBs
-  published.js disk store for hand-published EPUBs (Publiceer naar OPDS)
-  opds.js     OPDS (Atom) catalog feeds for CrossPoint's OPDS client
+  published.js disk store for hand-published EPUBs (Publiceer naar OPDS),
+              split by source (published/decorrespondent/, published/bd/)
+  opds.js     OPDS (Atom) catalog feeds for CrossPoint's OPDS client, one
+              nav entry + acquisition feed per source
+  bd-article.js Readability extraction for Brabants Dagblad HTML handed over
+              by the browser extension (no fetching/session logic — the
+              extension's tab is already logged into bd.nl normally)
   pocketbook.js emails the digest to a Send-to-PocketBook address
   public/     the web UI
+
+extension/    browser extension that sends the current bd.nl article to
+              /api/bd/import — see extension/README.md
 ```
+
+## Brabants Dagblad (browser extension)
+
+A second source, alongside De Correspondent, added via `extension/` rather
+than a server-side login: DPG Media's bd.nl sits behind a TCF2 consent gate
+*and* Akamai Bot Manager, which makes scripted login/fetching both fragile
+and uncomfortably close to "defeat anti-bot detection" — not something worth
+building even for personal use. Since your own browser is already
+legitimately authenticated, the extension just reads the article page you're
+already viewing and hands it to leesmap.
+
+See `extension/README.md` to install it. Once configured, articles you send
+land on the **Gepubliceerd — Brabants Dagblad** OPDS shelf (`/opds/published/bd`),
+separate from De Correspondent's shelf — same OPDS root, one subsection per
+source, no server-side BD credentials anywhere.
 
 ## Send-to-PocketBook (e.g. a PocketBook Verse Pro)
 
