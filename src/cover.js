@@ -29,7 +29,10 @@ const W = 1200;
 const H = 1600;
 const MARGIN = 110;
 const INK = '#141414';
-const MUTED = '#5c5c5c';
+// Darker than a typical "muted grey" web color: at cover-thumbnail sizes an
+// e-ink panel dithers mid-greys into near-invisibility, so secondary text
+// needs more contrast than it would on a screen to stay legible.
+const MUTED = '#333333';
 const PAPER = '#ffffff';
 
 // Draw letter-spaced, centred caps (for the small "DE CORRESPONDENT" label).
@@ -244,7 +247,7 @@ export async function coverImage({
 
   // Kicker + rule near the top.
   if (kicker) {
-    drawSpacedCaps(ctx, kicker, cx, MARGIN + 70, 34, 8);
+    drawSpacedCaps(ctx, kicker, cx, MARGIN + 70, 38, 8);
     ctx.beginPath();
     ctx.moveTo(cx - 90, MARGIN + 110);
     ctx.lineTo(cx + 90, MARGIN + 110);
@@ -290,7 +293,7 @@ export async function coverImage({
 
   // Subtitle (author / count) below the title (and portrait, if any).
   if (subtitle) {
-    ctx.font = `40px ${REGULAR}`;
+    ctx.font = `46px ${REGULAR}`;
     ctx.fillStyle = MUTED;
     ctx.textAlign = 'center';
     ctx.fillText(subtitle, cx, y + 24);
@@ -304,7 +307,7 @@ export async function coverImage({
     ctx.lineWidth = 2;
     ctx.strokeStyle = MUTED;
     ctx.stroke();
-    ctx.font = `34px ${REGULAR}`;
+    ctx.font = `38px ${REGULAR}`;
     ctx.fillStyle = MUTED;
     ctx.textAlign = 'center';
     ctx.fillText(footer, cx, H - MARGIN - 44);
