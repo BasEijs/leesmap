@@ -86,17 +86,19 @@ app.get('/api/config', (req, res) => {
     adminRequired: Boolean(env.adminPassword),
     pocketbookConfigured: pocketbookConfigured(),
     pocketbookNightlyEnabled: s.pocketbookNightlyEnabled,
+    bdClearHour: s.bdClearHour,
   });
 });
 
 app.post('/api/settings', requireAdmin, (req, res) => {
-  const { deviceIp, feeds, digestEnabled, digestHour, pocketbookNightlyEnabled } = req.body || {};
+  const { deviceIp, feeds, digestEnabled, digestHour, pocketbookNightlyEnabled, bdClearHour } = req.body || {};
   const next = {};
   if (typeof deviceIp === 'string') next.deviceIp = deviceIp.trim();
   if (Array.isArray(feeds)) next.feeds = feeds;
   if (typeof digestEnabled === 'boolean') next.digestEnabled = digestEnabled;
   if (Number.isInteger(digestHour) && digestHour >= 0 && digestHour <= 23) next.digestHour = digestHour;
   if (typeof pocketbookNightlyEnabled === 'boolean') next.pocketbookNightlyEnabled = pocketbookNightlyEnabled;
+  if (Number.isInteger(bdClearHour) && bdClearHour >= 0 && bdClearHour <= 23) next.bdClearHour = bdClearHour;
   res.json(saveSettings(next));
 });
 

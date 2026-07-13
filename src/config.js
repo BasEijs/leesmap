@@ -66,6 +66,11 @@ const defaults = {
   // before this toggle existed, of always sending whenever SMTP/POCKETBOOK_EMAIL
   // were configured) — has no effect unless pocketbook.js's isConfigured() is true.
   pocketbookNightlyEnabled: true,
+  // Local hour (0-23, server time) the nightly Brabants Dagblad clear fires
+  // (see scheduler.js). Unlike the De Correspondent shelf, BD articles are
+  // daily news — the "Gepubliceerd — Brabants Dagblad" OPDS shelf is wiped
+  // completely every night rather than accumulating.
+  bdClearHour: 4,
   // Correspondent profile slugs shown as an avatar grid; clicking one loads
   // that correspondent's feed. Resolved to name/avatar at runtime.
   // Slugs come from decorrespondent.nl/correspondenten (the last path segment

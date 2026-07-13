@@ -97,3 +97,14 @@ export async function deletePublished(filename, source = 'decorrespondent') {
   await unlink(sidecarPath(dir, filename)).catch(() => {});
   return true;
 }
+
+// Wipe every published EPUB (+ sidecar) for one source — used by the nightly
+// BD-clear job (scheduler.js): bd.nl articles are daily news, so unlike De
+// Correspondent's shelf they shouldn't accumulate indefinitely. Returns the
+// .epub filenames removed.
+export async function clearPublished(source) {
+  const dir = await ensurePublishedDir(source);
+  const names = await readdir(dir);
+  await Promise.all(names.map((n) => unlink(join(dir, n)).catch(() => {})));
+  return names.filter((n) => PUBLISHED_FILENAME_RE.test(n));
+}

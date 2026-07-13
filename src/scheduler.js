@@ -15,6 +15,7 @@ import { parseFeed } from './feed.js';
 import { articleToChapter } from './article.js';
 import { buildBundle } from './epub.js';
 import { digestsDir, pruneOldDigests } from './digests.js';
+import { clearPublished } from './published.js';
 import { isConfigured as pocketbookConfigured, sendToPocketbook } from './pocketbook.js';
 import { localDateStr } from './dateutil.js';
 
@@ -101,9 +102,21 @@ export async function runDigest() {
   saveSettings({ lastDigestRun: now.toISOString() });
 }
 
-// Fires every hour and checks the *current* digestHour setting, rather than
-// baking a fixed hour into the cron pattern at startup — so changing the hour
-// (or enabling/disabling) in settings takes effect without a restart.
+// Wipes the "Gepubliceerd — Brabants Dagblad" OPDS shelf every night — bd.nl
+// articles are daily news, so unlike De Correspondent's shelf they shouldn't
+// accumulate. Exported for manual/test invocation, same convention as runDigest.
+export async function clearBdPublished() {
+  const removed = await clearPublished('bd');
+  if (removed.length) {
+    console.log(`[scheduler] Cleared ${removed.length} Brabants Dagblad publicatie(s):`, removed.join(', '));
+  }
+  return removed;
+}
+
+// Fires every hour and checks the *current* digestHour/bdClearHour settings,
+// rather than baking a fixed hour into the cron pattern at startup — so
+// changing the hour (or enabling/disabling the digest) in settings takes
+// effect without a restart.
 export function startScheduler() {
   cron.schedule('0 * * * *', () => {
     pruneOldDigests()
@@ -112,10 +125,16 @@ export function startScheduler() {
       })
       .catch((err) => console.error('[scheduler] Prune failed:', err.message));
 
-    const { digestHour } = loadSettings();
+    const { digestHour, bdClearHour } = loadSettings();
+    const currentHour = new Date().getHours();
+
+    if (currentHour === (Number.isInteger(bdClearHour) ? bdClearHour : 4)) {
+      clearBdPublished().catch((err) => console.error('[scheduler] BD clear failed:', err.message));
+    }
+
     const hour = Number.isInteger(digestHour) ? digestHour : 3;
-    if (new Date().getHours() !== hour) return;
+    if (currentHour !== hour) return;
     runDigest().catch((err) => console.error('[scheduler] Unexpected error:', err));
   });
-  console.log('[scheduler] Hourly check armed (runs when the clock hits digestHour, if digestEnabled)');
+  console.log('[scheduler] Hourly check armed (runs when the clock hits digestHour, if digestEnabled; Brabants Dagblad shelf clears nightly at bdClearHour)');
 }
