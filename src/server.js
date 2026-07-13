@@ -26,7 +26,11 @@ function isSingle(mode, urls) {
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const app = express();
-app.use(express.json({ limit: '1mb' }));
+// The BD import route (/api/bd/import) posts a whole article page's HTML —
+// easily several times 1mb once scripts/styles/structured data are counted —
+// so the default needs real headroom beyond the small JSON bodies (urls,
+// settings) every other route sends.
+app.use(express.json({ limit: '20mb' }));
 
 const mediaBase = `http://127.0.0.1:${env.port}`;
 
