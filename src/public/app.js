@@ -635,13 +635,13 @@ function renderCalibreResults(books) {
     actions.className = 'cal-actions';
     const btn = document.createElement('button');
     btn.className = 'secondary cal-pub';
-    btn.textContent = 'Publiceer';
+    btn.textContent = 'Publiceer OPDS';
     btn.onclick = () => publishCalibre(b, btn);
     actions.append(btn);
     if (state.pocketbookConfigured) {
       const pb = document.createElement('button');
       pb.className = 'secondary cal-pub';
-      pb.textContent = 'Pocketbook';
+      pb.textContent = 'send to Pocketbook';
       pb.onclick = () => pocketbookCalibre(b, pb);
       actions.append(pb);
     }
@@ -668,7 +668,7 @@ async function publishCalibre(book, btn) {
     toast(`"${book.title}" op de OPDS-plank.`);
   } catch (err) {
     btn.disabled = false;
-    btn.textContent = 'Publiceer';
+    btn.textContent = 'Publiceer OPDS';
     toast('Publiceren mislukt: ' + err.message);
   }
 }
@@ -689,7 +689,7 @@ async function pocketbookCalibre(book, btn) {
     toast(`"${book.title}" naar Pocketbook.`);
   } catch (err) {
     btn.disabled = false;
-    btn.textContent = 'Pocketbook';
+    btn.textContent = 'send to Pocketbook';
     toast('Versturen naar Pocketbook mislukt: ' + err.message);
   }
 }

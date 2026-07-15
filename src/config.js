@@ -69,10 +69,10 @@ const defaults = {
   lastDigestRun: null,
   // Whether the nightly digest also gets emailed to POCKETBOOK_EMAIL (see
   // scheduler.js). Independent of digestEnabled and of the manual "Verstuur
-  // naar Pocketbook" button. Defaults to on (matches the original behaviour,
-  // before this toggle existed, of always sending whenever SMTP/POCKETBOOK_EMAIL
-  // were configured) — has no effect unless pocketbook.js's isConfigured() is true.
-  pocketbookNightlyEnabled: true,
+  // naar Pocketbook" button. Off by default — opt in from settings, same as
+  // the nightly digest itself. Has no effect unless pocketbook.js's
+  // isConfigured() is true.
+  pocketbookNightlyEnabled: false,
   // Correspondent profile slugs shown as an avatar grid; clicking one loads
   // that correspondent's feed. Resolved to name/avatar at runtime.
   // Slugs come from decorrespondent.nl/correspondenten (the last path segment
