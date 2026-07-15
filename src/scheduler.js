@@ -15,7 +15,12 @@ import { parseFeed } from './feed.js';
 import { articleToChapter } from './article.js';
 import { buildBundle } from './epub.js';
 import { digestsDir, pruneOldDigests } from './digests.js';
-import { isConfigured as pocketbookConfigured, sendToPocketbook } from './pocketbook.js';
+import {
+  isConfigured as pocketbookConfigured,
+  sendToPocketbook,
+  isConfiguredMarieke as pocketbookConfiguredMarieke,
+  sendToPocketbookMarieke,
+} from './pocketbook.js';
 import { localDateStr } from './dateutil.js';
 
 const mediaBase = `http://127.0.0.1:${env.port}`;
@@ -95,6 +100,14 @@ export async function runDigest() {
       console.log(`[scheduler] Emailed ${filename} to Pocketbook`);
     } catch (err) {
       console.error('[scheduler] Pocketbook send failed:', err.message);
+    }
+  }
+  if (settings.pocketbookNightlyEnabledMarieke && pocketbookConfiguredMarieke()) {
+    try {
+      await sendToPocketbookMarieke(buffer, filename, title);
+      console.log(`[scheduler] Emailed ${filename} to Pocketbook (Marieke)`);
+    } catch (err) {
+      console.error('[scheduler] Pocketbook (Marieke) send failed:', err.message);
     }
   }
 

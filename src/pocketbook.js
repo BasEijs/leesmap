@@ -16,6 +16,16 @@ export function isConfigured() {
   return Boolean(env.pocketbookEmail && env.smtpHost && env.smtpUser && env.smtpPass);
 }
 
+// Second device (Marieke's reader). PocketBook ties the registered
+// contact/sender address to one account, so this needs its own sender
+// identity (a second mailbox) rather than reusing SMTP_FROM — see
+// .env.example for the SMTP_*_MARIEKE setup.
+export function isConfiguredMarieke() {
+  return Boolean(
+    env.pocketbookEmailMarieke && env.smtpHost && env.smtpUserMarieke && env.smtpPassMarieke
+  );
+}
+
 let transporter;
 function getTransporter() {
   if (!transporter) {
@@ -29,14 +39,42 @@ function getTransporter() {
   return transporter;
 }
 
-// Mail one EPUB to the configured PocketBook device address. Throws on
-// failure — callers decide whether that should affect anything else.
-export async function sendToPocketbook(buffer, filename, title) {
-  await getTransporter().sendMail({
-    from: env.smtpFrom,
-    to: env.pocketbookEmail,
+let transporterMarieke;
+function getTransporterMarieke() {
+  if (!transporterMarieke) {
+    transporterMarieke = nodemailer.createTransport({
+      host: env.smtpHost,
+      port: env.smtpPort,
+      secure: env.smtpPort === 465,
+      auth: { user: env.smtpUserMarieke, pass: env.smtpPassMarieke },
+    });
+  }
+  return transporterMarieke;
+}
+
+async function mail(transport, from, to, buffer, filename, title) {
+  await transport.sendMail({
+    from,
+    to,
     subject: title || filename,
     text: 'Automatisch verstuurd door Leesmap.',
     attachments: [{ filename, content: buffer, contentType: 'application/epub+zip' }],
   });
+}
+
+// Mail one EPUB to the configured PocketBook device address. Throws on
+// failure — callers decide whether that should affect anything else.
+export async function sendToPocketbook(buffer, filename, title) {
+  await mail(getTransporter(), env.smtpFrom, env.pocketbookEmail, buffer, filename, title);
+}
+
+export async function sendToPocketbookMarieke(buffer, filename, title) {
+  await mail(
+    getTransporterMarieke(),
+    env.smtpFromMarieke,
+    env.pocketbookEmailMarieke,
+    buffer,
+    filename,
+    title
+  );
 }

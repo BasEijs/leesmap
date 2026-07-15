@@ -9,6 +9,7 @@ const state = {
   correspondents: [], activeCorrs: new Set(), generalActive: false,
   lastDigestRun: null,
   pocketbookConfigured: false,
+  pocketbookConfiguredMarieke: false,
   calibreConfigured: false,
   // Admin gate: adminRequired comes from the server (ADMIN_PASSWORD set or
   // not); adminPw is cached in sessionStorage once verified, so it survives
@@ -68,6 +69,15 @@ async function loadConfig() {
   $('#pocketbook-nightly-detail').textContent = state.pocketbookConfigured
     ? 'Mailt dezelfde nachtelijke digest ook naar het Send-to-PocketBook-adres.'
     : 'Niet geconfigureerd: zet POCKETBOOK_EMAIL/SMTP_* in .env.';
+  state.pocketbookConfiguredMarieke = Boolean(c.pocketbookConfiguredMarieke);
+  $('#btn-pocketbook-marieke').title = state.pocketbookConfiguredMarieke
+    ? ''
+    : 'Niet geconfigureerd: zet POCKETBOOK_EMAIL_MARIEKE/SMTP_* in .env.';
+  $('#pocketbook-nightly-enabled-marieke').checked = Boolean(c.pocketbookNightlyEnabledMarieke);
+  $('#pocketbook-nightly-enabled-marieke').disabled = !state.pocketbookConfiguredMarieke;
+  $('#pocketbook-nightly-detail-marieke').textContent = state.pocketbookConfiguredMarieke
+    ? 'Mailt dezelfde nachtelijke digest ook naar Mariekes Send-to-PocketBook-adres.'
+    : 'Niet geconfigureerd: zet POCKETBOOK_EMAIL_MARIEKE/SMTP_* in .env.';
   state.calibreConfigured = Boolean(c.calibreConfigured);
   $('#btn-calibre').hidden = !state.calibreConfigured;
   updateCount();
@@ -385,6 +395,7 @@ function updateCount() {
   $('#btn-download').disabled = n === 0;
   $('#btn-publish').disabled = n === 0;
   $('#btn-pocketbook').disabled = n === 0 || !state.pocketbookConfigured;
+  $('#btn-pocketbook-marieke').disabled = n === 0 || !state.pocketbookConfiguredMarieke;
 
   // A bundle needs at least two articles. With exactly one selected, force
   // "Per artikel" so the UI matches what the server actually builds; restore
@@ -583,6 +594,26 @@ async function sendPocketbook() {
   }
 }
 
+// Same as sendPocketbook, but mails to Marieke's Send-to-PocketBook address.
+async function sendPocketbookMarieke() {
+  const body = collect();
+  $('#btn-pocketbook-marieke').disabled = true;
+  try {
+    const res = await adminFetch('api/pocketbook-marieke', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const r = await res.json();
+    if (!res.ok) throw new Error(r.error || 'Versturen mislukt');
+    toast('Verstuurd naar Pocketbook (Marieke).');
+  } catch (err) {
+    toast('Versturen naar Pocketbook (Marieke) mislukt: ' + err.message);
+  } finally {
+    $('#btn-pocketbook-marieke').disabled = state.selected.size === 0 || !state.pocketbookConfiguredMarieke;
+  }
+}
+
 // ---------- Calibre-Web boekenkast ----------
 // Browse the Calibre-Web library over its OPDS feed and publish a chosen book
 // straight onto leesmap's own "Gepubliceerd — Calibre-Web" OPDS shelf, so the
@@ -638,10 +669,10 @@ function renderCalibreResults(books) {
     btn.textContent = 'Publiceer';
     btn.onclick = () => publishCalibre(b, btn);
     actions.append(btn);
-    // Secondary actions (currently just Pocketbook) live behind a ⋯ overflow
-    // so the row stays a single primary button. Only shown when there's
-    // something to put in it.
-    if (state.pocketbookConfigured) {
+    // Secondary actions (Pocketbook sends) live behind a ⋯ overflow so the
+    // row stays a single primary button. Only shown when there's something
+    // to put in it.
+    if (state.pocketbookConfigured || state.pocketbookConfiguredMarieke) {
       const more = document.createElement('div');
       more.className = 'cal-more';
       const moreBtn = document.createElement('button');
@@ -653,11 +684,20 @@ function renderCalibreResults(books) {
       const menu = document.createElement('div');
       menu.className = 'cal-menu';
       menu.hidden = true;
-      const pb = document.createElement('button');
-      pb.className = 'cal-menu-item';
-      pb.textContent = 'Send to Pocketbook';
-      pb.onclick = (e) => { e.stopPropagation(); pocketbookCalibre(b, pb); };
-      menu.append(pb);
+      if (state.pocketbookConfigured) {
+        const pb = document.createElement('button');
+        pb.className = 'cal-menu-item';
+        pb.textContent = 'Send to Pocketbook';
+        pb.onclick = (e) => { e.stopPropagation(); pocketbookCalibre(b, pb); };
+        menu.append(pb);
+      }
+      if (state.pocketbookConfiguredMarieke) {
+        const pbM = document.createElement('button');
+        pbM.className = 'cal-menu-item';
+        pbM.textContent = 'Send to Pocketbook (Marieke)';
+        pbM.onclick = (e) => { e.stopPropagation(); pocketbookCalibreMarieke(b, pbM); };
+        menu.append(pbM);
+      }
       moreBtn.onclick = (e) => {
         e.stopPropagation();
         const wasHidden = menu.hidden;
@@ -723,6 +763,27 @@ async function pocketbookCalibre(book, btn) {
     btn.disabled = false;
     btn.textContent = 'Send to Pocketbook';
     toast('Versturen naar Pocketbook mislukt: ' + err.message);
+  }
+}
+
+async function pocketbookCalibreMarieke(book, btn) {
+  btn.disabled = true;
+  btn.textContent = 'Bezig…';
+  try {
+    const res = await adminFetch('api/calibre/pocketbook-marieke', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ epubHref: book.epubHref, title: book.title }),
+    });
+    const r = await res.json();
+    if (!res.ok) throw new Error(r.error || 'Versturen mislukt');
+    btn.textContent = 'Verstuurd';
+    btn.dataset.done = '1';
+    toast(`"${book.title}" naar Pocketbook (Marieke).`);
+  } catch (err) {
+    btn.disabled = false;
+    btn.textContent = 'Send to Pocketbook (Marieke)';
+    toast('Versturen naar Pocketbook (Marieke) mislukt: ' + err.message);
   }
 }
 
@@ -854,6 +915,7 @@ $('#btn-send').onclick = send;
 $('#btn-download').onclick = download;
 $('#btn-publish').onclick = publish;
 $('#btn-pocketbook').onclick = sendPocketbook;
+$('#btn-pocketbook-marieke').onclick = sendPocketbookMarieke;
 
 for (let h = 0; h < 24; h++) $('#digest-hour').append(new Option(String(h).padStart(2, '0') + ':00', String(h)));
 $('#digest-enabled').onchange = async () => {
@@ -869,6 +931,11 @@ $('#pocketbook-nightly-enabled').onchange = async () => {
   const enabled = $('#pocketbook-nightly-enabled').checked;
   await saveSettings({ pocketbookNightlyEnabled: enabled });
   toast(enabled ? 'Nachtelijk versturen naar Pocketbook aan.' : 'Nachtelijk versturen naar Pocketbook uit.');
+};
+$('#pocketbook-nightly-enabled-marieke').onchange = async () => {
+  const enabled = $('#pocketbook-nightly-enabled-marieke').checked;
+  await saveSettings({ pocketbookNightlyEnabledMarieke: enabled });
+  toast(enabled ? 'Nachtelijk versturen naar Pocketbook (Marieke) aan.' : 'Nachtelijk versturen naar Pocketbook (Marieke) uit.');
 };
 $('#btn-download-yesterday').onclick = downloadYesterday;
 $('#btn-settings').onclick = async () => {

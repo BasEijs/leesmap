@@ -14,7 +14,12 @@ import { listDigests, digestFilePath } from './digests.js';
 import { listPublished, publishedFilePath, savePublished, deletePublished } from './published.js';
 import { rootCatalog, digestsFeed, publishedFeed } from './opds.js';
 import { startScheduler } from './scheduler.js';
-import { isConfigured as pocketbookConfigured, sendToPocketbook } from './pocketbook.js';
+import {
+  isConfigured as pocketbookConfigured,
+  sendToPocketbook,
+  isConfiguredMarieke as pocketbookConfiguredMarieke,
+  sendToPocketbookMarieke,
+} from './pocketbook.js';
 import { isConfigured as calibreConfigured, searchBooks, fetchEpub, fetchCover } from './calibre.js';
 
 // A "bundle" of one article is just that article with extra ceremony (author-led
@@ -84,18 +89,24 @@ app.get('/api/config', (req, res) => {
     adminRequired: Boolean(env.adminPassword),
     pocketbookConfigured: pocketbookConfigured(),
     pocketbookNightlyEnabled: s.pocketbookNightlyEnabled,
+    pocketbookConfiguredMarieke: pocketbookConfiguredMarieke(),
+    pocketbookNightlyEnabledMarieke: s.pocketbookNightlyEnabledMarieke,
     calibreConfigured: calibreConfigured(),
   });
 });
 
 app.post('/api/settings', requireAdmin, (req, res) => {
-  const { deviceIp, feeds, digestEnabled, digestHour, pocketbookNightlyEnabled } = req.body || {};
+  const {
+    deviceIp, feeds, digestEnabled, digestHour,
+    pocketbookNightlyEnabled, pocketbookNightlyEnabledMarieke,
+  } = req.body || {};
   const next = {};
   if (typeof deviceIp === 'string') next.deviceIp = deviceIp.trim();
   if (Array.isArray(feeds)) next.feeds = feeds;
   if (typeof digestEnabled === 'boolean') next.digestEnabled = digestEnabled;
   if (Number.isInteger(digestHour) && digestHour >= 0 && digestHour <= 23) next.digestHour = digestHour;
   if (typeof pocketbookNightlyEnabled === 'boolean') next.pocketbookNightlyEnabled = pocketbookNightlyEnabled;
+  if (typeof pocketbookNightlyEnabledMarieke === 'boolean') next.pocketbookNightlyEnabledMarieke = pocketbookNightlyEnabledMarieke;
   res.json(saveSettings(next));
 });
 
@@ -287,6 +298,23 @@ app.post('/api/calibre/pocketbook', requireAdmin, async (req, res) => {
   }
 });
 
+// Same as /api/calibre/pocketbook, but for Marieke's device.
+app.post('/api/calibre/pocketbook-marieke', requireAdmin, async (req, res) => {
+  if (!pocketbookConfiguredMarieke()) {
+    return res.status(400).json({ error: 'Pocketbook (Marieke) niet geconfigureerd (POCKETBOOK_EMAIL_MARIEKE/SMTP_* ontbreken).' });
+  }
+  const { epubHref, title } = req.body || {};
+  if (!epubHref) return res.status(400).json({ error: 'Geen boek geselecteerd.' });
+  try {
+    const buffer = await fetchEpub(epubHref);
+    const filename = `${(title || 'boek').replace(/[^\w.-]+/g, '_').slice(0, 60)}.epub`;
+    await sendToPocketbookMarieke(buffer, filename, title || 'Boek');
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message });
+  }
+});
+
 app.get('/api/calibre/published', async (req, res) => {
   res.json({ items: await listPublished('calibre') });
 });
@@ -317,6 +345,31 @@ app.post('/api/pocketbook', requireAdmin, async (req, res) => {
       out = await buildBundle(chapters, { title });
     }
     await sendToPocketbook(out.buffer, out.filename, title || out.title);
+    res.json({ ok: true, filename: out.filename });
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message });
+  }
+});
+
+// Same as /api/pocketbook, but for Marieke's device.
+app.post('/api/pocketbook-marieke', requireAdmin, async (req, res) => {
+  if (!pocketbookConfiguredMarieke()) {
+    return res.status(400).json({ error: 'Pocketbook (Marieke) niet geconfigureerd (POCKETBOOK_EMAIL_MARIEKE/SMTP_* ontbreken).' });
+  }
+  const { urls = [], mode = 'bundle', images = 'strip', title } = req.body || {};
+  if (!urls.length) return res.status(400).json({ error: 'Geen artikelen geselecteerd.' });
+  try {
+    let out;
+    if (isSingle(mode, urls)) {
+      const chapter = await articleToChapter(urls[0], { images, mediaBase, withAvatar: true });
+      out = await buildSingle(chapter);
+    } else {
+      const chapters = [];
+      for (const url of urls)
+        chapters.push(await articleToChapter(url, { images, mediaBase, withAvatar: true }));
+      out = await buildBundle(chapters, { title });
+    }
+    await sendToPocketbookMarieke(out.buffer, out.filename, title || out.title);
     res.json({ ok: true, filename: out.filename });
   } catch (err) {
     res.status(err.status || 500).json({ error: err.message });

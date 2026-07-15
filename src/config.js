@@ -40,6 +40,13 @@ export const env = {
   calibreWebUser: process.env.CALIBRE_WEB_USER || '',
   calibreWebPass: process.env.CALIBRE_WEB_PASS || '',
   pocketbookEmail: process.env.POCKETBOOK_EMAIL || '',
+  // Second Send-to-PocketBook device (Marieke's reader). PocketBook ties the
+  // registered contact/sender address to one account, so this needs its own
+  // sender identity, not just a second pbsync address — hence its own
+  // SMTP_*_MARIEKE credentials below (a second mailbox), while sharing the
+  // same SMTP_HOST/SMTP_PORT (both are Gmail here). See pocketbook.js.
+  // Unset to skip this channel entirely.
+  pocketbookEmailMarieke: process.env.POCKETBOOK_EMAIL_MARIEKE || '',
   smtpHost: process.env.SMTP_HOST || '',
   smtpPort: Number(process.env.SMTP_PORT) || 587,
   smtpUser: process.env.SMTP_USER || '',
@@ -49,6 +56,11 @@ export const env = {
   // the first one prompts an email confirmation to add them. Defaults to
   // SMTP_USER since that's what most providers require as the envelope sender.
   smtpFrom: process.env.SMTP_FROM || process.env.SMTP_USER || '',
+  // Marieke's mailbox: a second Gmail account, used only as the sender
+  // identity for her Pocketbook mail (same SMTP_HOST/SMTP_PORT as above).
+  smtpUserMarieke: process.env.SMTP_USER_MARIEKE || '',
+  smtpPassMarieke: process.env.SMTP_PASS_MARIEKE || '',
+  smtpFromMarieke: process.env.SMTP_FROM_MARIEKE || process.env.SMTP_USER_MARIEKE || '',
 };
 
 const SETTINGS_PATH = join(env.dataDir, 'settings.json');
@@ -73,6 +85,9 @@ const defaults = {
   // the nightly digest itself. Has no effect unless pocketbook.js's
   // isConfigured() is true.
   pocketbookNightlyEnabled: false,
+  // Same, but for Marieke's Pocketbook (see pocketbookEmailMarieke above).
+  // Independent toggle, off by default.
+  pocketbookNightlyEnabledMarieke: false,
   // Correspondent profile slugs shown as an avatar grid; clicking one loads
   // that correspondent's feed. Resolved to name/avatar at runtime.
   // Slugs come from decorrespondent.nl/correspondenten (the last path segment
