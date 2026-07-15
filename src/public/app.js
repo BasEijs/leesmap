@@ -632,12 +632,22 @@ function renderCalibreResults(books) {
     meta.className = 'cal-meta';
     meta.innerHTML = `<div class="cal-title">${b.title}</div>` +
       (b.author ? `<div class="cal-author">${b.author}</div>` : '');
+    const actions = document.createElement('div');
+    actions.className = 'cal-actions';
     const btn = document.createElement('button');
     btn.className = 'secondary cal-pub';
     btn.textContent = 'Publiceer';
     btn.onclick = () => publishCalibre(b, btn);
+    actions.append(btn);
+    if (state.pocketbookConfigured) {
+      const pb = document.createElement('button');
+      pb.className = 'secondary cal-pub';
+      pb.textContent = 'Pocketbook';
+      pb.onclick = () => pocketbookCalibre(b, pb);
+      actions.append(pb);
+    }
     li.innerHTML = cover;
-    li.append(meta, btn);
+    li.append(meta, actions);
     ul.append(li);
   }
 }
@@ -661,6 +671,27 @@ async function publishCalibre(book, btn) {
     btn.disabled = false;
     btn.textContent = 'Publiceer';
     toast('Publiceren mislukt: ' + err.message);
+  }
+}
+
+async function pocketbookCalibre(book, btn) {
+  btn.disabled = true;
+  btn.textContent = 'Bezig…';
+  try {
+    const res = await adminFetch('api/calibre/pocketbook', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ epubHref: book.epubHref, title: book.title }),
+    });
+    const r = await res.json();
+    if (!res.ok) throw new Error(r.error || 'Versturen mislukt');
+    btn.textContent = 'Verstuurd';
+    btn.dataset.done = '1';
+    toast(`"${book.title}" naar Pocketbook.`);
+  } catch (err) {
+    btn.disabled = false;
+    btn.textContent = 'Pocketbook';
+    toast('Versturen naar Pocketbook mislukt: ' + err.message);
   }
 }
 

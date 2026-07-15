@@ -264,8 +264,11 @@ app.get('/api/calibre/books', requireAdmin, async (req, res) => {
 });
 
 // Cover proxy: streams a Calibre-Web cover through leesmap so the UI shows it
-// regardless of mixed-content or Basic Auth on the Calibre-Web side.
-app.get('/api/calibre/cover', requireAdmin, async (req, res) => {
+// regardless of mixed-content or Basic Auth on the Calibre-Web side. Not
+// admin-gated: it's loaded via an <img> tag, which can't send the admin header,
+// and a low-sensitivity thumbnail behind the app's existing BASIC_AUTH/Access
+// gate doesn't need the narrower one anyway.
+app.get('/api/calibre/cover', async (req, res) => {
   try {
     const { buffer, contentType } = await fetchCover(req.query.u || '');
     res.setHeader('Content-Type', contentType);
@@ -283,6 +286,25 @@ app.post('/api/calibre/publish', requireAdmin, async (req, res) => {
     const buffer = await fetchEpub(epubHref);
     const record = await savePublished(buffer, title || 'Boek', 'calibre');
     res.json({ ok: true, items: await listPublished('calibre'), published: record });
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message });
+  }
+});
+
+// Mail a Calibre-Web book straight to the Send-to-PocketBook address, the same
+// channel scheduler.js / the digest use — pulls the EPUB through Calibre-Web
+// and hands it to sendToPocketbook (pocketbook.js) instead of the OPDS store.
+app.post('/api/calibre/pocketbook', requireAdmin, async (req, res) => {
+  if (!pocketbookConfigured()) {
+    return res.status(400).json({ error: 'Pocketbook niet geconfigureerd (POCKETBOOK_EMAIL/SMTP_* ontbreken).' });
+  }
+  const { epubHref, title } = req.body || {};
+  if (!epubHref) return res.status(400).json({ error: 'Geen boek geselecteerd.' });
+  try {
+    const buffer = await fetchEpub(epubHref);
+    const filename = `${(title || 'boek').replace(/[^\w.-]+/g, '_').slice(0, 60)}.epub`;
+    await sendToPocketbook(buffer, filename, title || 'Boek');
+    res.json({ ok: true });
   } catch (err) {
     res.status(err.status || 500).json({ error: err.message });
   }

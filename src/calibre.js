@@ -105,11 +105,14 @@ function mapEntry(entry) {
     author,
     epubHref: href,
     coverHref: cover ? cover.getAttribute('href') : '',
+    // <updated> is Calibre's added/modified time (<published> carries the book's
+    // publication date, often a junk "101-..." value), so it's what we sort on.
+    updated: text(entry, 'updated'),
   };
 }
 
 // Search the library (empty query -> most recently added). Returns up to the
-// one OPDS page Calibre-Web hands back (~60 books).
+// one OPDS page Calibre-Web hands back (~60 books), newest first.
 export async function searchBooks(query) {
   requireConfigured();
   const q = (query || '').trim();
@@ -120,7 +123,10 @@ export async function searchBooks(query) {
   );
   const dom = new JSDOM(await res.text(), { contentType: 'application/xml' });
   const entries = dom.window.document.getElementsByTagName('entry');
-  return Array.from(entries).map(mapEntry).filter(Boolean);
+  return Array.from(entries)
+    .map(mapEntry)
+    .filter(Boolean)
+    .sort((a, b) => new Date(b.updated || 0) - new Date(a.updated || 0));
 }
 
 // Pull a book's EPUB through Calibre-Web (with our stored credentials, if any)

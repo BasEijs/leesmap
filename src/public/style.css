@@ -295,6 +295,7 @@ span.corr-av-sm { display: grid; place-items: center; font-size: 0.8rem; }
 .cal-title { font-weight: 600; font-size: 0.92rem; color: var(--ink);
   overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .cal-author { font-size: 0.8rem; color: var(--ink-2); margin-top: 0.15rem; }
+.cal-actions { display: flex; flex-direction: column; gap: 0.35rem; }
 .cal-pub { white-space: nowrap; }
 .cal-pub[data-done="1"] { color: var(--ok); border-color: var(--ok); }
 
