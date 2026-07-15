@@ -28,6 +28,13 @@ services:
       # Optional narrower gate: guards instellingen + send/publish only, so the
       # app can be shared without letting someone reconfigure or send by accident.
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      # Optional Calibre-Web: browse your library ("boekenkast") and publish a
+      # book to its OPDS shelf. URL is the Calibre-Web root incl. scheme, no
+      # /opds suffix (e.g. https://books.example.com). USER/PASS only needed if
+      # the OPDS feed isn't anonymously readable.
+      CALIBRE_WEB_URL: ${CALIBRE_WEB_URL:-}
+      CALIBRE_WEB_USER: ${CALIBRE_WEB_USER:-}
+      CALIBRE_WEB_PASS: ${CALIBRE_WEB_PASS:-}
       # Optional Send-to-PocketBook: mails the nightly digest (and manual sends)
       # to a PocketBook device's own username@pbsync.com address. Leave
       # POCKETBOOK_EMAIL unset to skip this channel entirely.
