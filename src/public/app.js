@@ -638,12 +638,37 @@ function renderCalibreResults(books) {
     btn.textContent = 'Publiceer OPDS';
     btn.onclick = () => publishCalibre(b, btn);
     actions.append(btn);
+    // Secondary actions (currently just Pocketbook) live behind a ⋯ overflow
+    // so the row stays a single primary button. Only shown when there's
+    // something to put in it.
     if (state.pocketbookConfigured) {
+      const more = document.createElement('div');
+      more.className = 'cal-more';
+      const moreBtn = document.createElement('button');
+      moreBtn.className = 'secondary cal-more-btn';
+      moreBtn.textContent = '⋯';
+      moreBtn.setAttribute('aria-haspopup', 'true');
+      moreBtn.setAttribute('aria-expanded', 'false');
+      moreBtn.setAttribute('aria-label', 'Meer acties');
+      const menu = document.createElement('div');
+      menu.className = 'cal-menu';
+      menu.hidden = true;
       const pb = document.createElement('button');
-      pb.className = 'secondary cal-pub';
-      pb.textContent = 'send to Pocketbook';
-      pb.onclick = () => pocketbookCalibre(b, pb);
-      actions.append(pb);
+      pb.className = 'cal-menu-item';
+      pb.textContent = 'Send to Pocketbook';
+      pb.onclick = (e) => { e.stopPropagation(); pocketbookCalibre(b, pb); };
+      menu.append(pb);
+      moreBtn.onclick = (e) => {
+        e.stopPropagation();
+        const wasHidden = menu.hidden;
+        closeAllCalMenus();
+        if (wasHidden) {
+          menu.hidden = false;
+          moreBtn.setAttribute('aria-expanded', 'true');
+        }
+      };
+      more.append(moreBtn, menu);
+      actions.append(more);
     }
     li.innerHTML = cover;
     li.append(meta, actions);
@@ -673,6 +698,13 @@ async function publishCalibre(book, btn) {
   }
 }
 
+// Close any open per-book overflow menu (one at a time). Wired to a document
+// click below so tapping elsewhere dismisses it.
+function closeAllCalMenus() {
+  document.querySelectorAll('.cal-menu').forEach((m) => { m.hidden = true; });
+  document.querySelectorAll('.cal-more-btn').forEach((b) => b.setAttribute('aria-expanded', 'false'));
+}
+
 async function pocketbookCalibre(book, btn) {
   btn.disabled = true;
   btn.textContent = 'Bezig…';
@@ -689,7 +721,7 @@ async function pocketbookCalibre(book, btn) {
     toast(`"${book.title}" naar Pocketbook.`);
   } catch (err) {
     btn.disabled = false;
-    btn.textContent = 'send to Pocketbook';
+    btn.textContent = 'Send to Pocketbook';
     toast('Versturen naar Pocketbook mislukt: ' + err.message);
   }
 }
@@ -851,6 +883,7 @@ $('#btn-calibre').onclick = async () => {
 $('#cal-close').onclick = () => openCalibre(false);
 $('#cal-search').onclick = searchCalibre;
 $('#cal-q').addEventListener('keydown', (e) => { if (e.key === 'Enter') searchCalibre(); });
+document.addEventListener('click', closeAllCalMenus);
 // "Extra opties" (Verstuur naar X4 / Publiceer naar OPDS) is gated the same
 // way: intercept the click that would open it and only let it through once
 // ensureAdmin() resolves. Collapsing is always allowed.
