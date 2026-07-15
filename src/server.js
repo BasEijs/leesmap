@@ -6,7 +6,6 @@ import { dirname, join } from 'node:path';
 import { env, loadSettings, saveSettings } from './config.js';
 import { parseFeed, parseCombinedFeed } from './feed.js';
 import { articleToChapter } from './article.js';
-import { bdArticleToChapter } from './bd-article.js';
 import { buildSingle, buildBundle } from './epub.js';
 import { probe, upload } from './device.js';
 import { get as getMedia } from './media.js';
@@ -27,11 +26,9 @@ function isSingle(mode, urls) {
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const app = express();
-// The BD import route (/api/bd/import) posts a whole article page's HTML —
-// easily several times 1mb once scripts/styles/structured data are counted —
-// so the default needs real headroom beyond the small JSON bodies (urls,
-// settings) every other route sends.
-app.use(express.json({ limit: '20mb' }));
+// Every route sends small JSON bodies (urls, settings, a publish href), so a
+// modest limit is plenty of headroom.
+app.use(express.json({ limit: '1mb' }));
 
 const mediaBase = `http://127.0.0.1:${env.port}`;
 
@@ -87,20 +84,18 @@ app.get('/api/config', (req, res) => {
     adminRequired: Boolean(env.adminPassword),
     pocketbookConfigured: pocketbookConfigured(),
     pocketbookNightlyEnabled: s.pocketbookNightlyEnabled,
-    bdClearHour: s.bdClearHour,
     calibreConfigured: calibreConfigured(),
   });
 });
 
 app.post('/api/settings', requireAdmin, (req, res) => {
-  const { deviceIp, feeds, digestEnabled, digestHour, pocketbookNightlyEnabled, bdClearHour } = req.body || {};
+  const { deviceIp, feeds, digestEnabled, digestHour, pocketbookNightlyEnabled } = req.body || {};
   const next = {};
   if (typeof deviceIp === 'string') next.deviceIp = deviceIp.trim();
   if (Array.isArray(feeds)) next.feeds = feeds;
   if (typeof digestEnabled === 'boolean') next.digestEnabled = digestEnabled;
   if (Number.isInteger(digestHour) && digestHour >= 0 && digestHour <= 23) next.digestHour = digestHour;
   if (typeof pocketbookNightlyEnabled === 'boolean') next.pocketbookNightlyEnabled = pocketbookNightlyEnabled;
-  if (Number.isInteger(bdClearHour) && bdClearHour >= 0 && bdClearHour <= 23) next.bdClearHour = bdClearHour;
   res.json(saveSettings(next));
 });
 
@@ -231,24 +226,6 @@ app.post('/api/published', requireAdmin, async (req, res) => {
 app.delete('/api/published/:filename', requireAdmin, async (req, res) => {
   await deletePublished(req.params.filename, 'decorrespondent');
   res.json({ ok: true, items: await listPublished('decorrespondent') });
-});
-
-// --- Brabants Dagblad: receive one already-extracted article from the
-// browser extension (see extension/), bind it, and publish it straight to
-// its own OPDS "Gepubliceerd — Brabants Dagblad" shelf. No fetching/session
-// here — the extension's tab was already logged into bd.nl normally, so the
-// paywalled body text is already in the HTML it sends.
-app.post('/api/bd/import', requireAdmin, async (req, res) => {
-  const { url, html } = req.body || {};
-  if (!url || !html) return res.status(400).json({ error: 'Verwachtte { url, html }.' });
-  try {
-    const chapter = bdArticleToChapter(html, url);
-    const out = await buildSingle(chapter);
-    const record = await savePublished(out.buffer, out.title, 'bd');
-    res.json({ ok: true, title: out.title, published: record });
-  } catch (err) {
-    res.status(err.status || 500).json({ error: err.message });
-  }
 });
 
 // --- Calibre-Web: browse the library and publish a book to its OPDS shelf ---

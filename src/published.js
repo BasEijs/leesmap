@@ -4,7 +4,7 @@
 // overwritten by that night's automatic run.
 //
 // Split by source into its own subfolder (published/<source>/...) — enough
-// separation to keep De Correspondent and Brabants Dagblad shelves apart on
+// separation to keep the De Correspondent and Calibre-Web shelves apart on
 // the OPDS side without needing source-prefixed filenames.
 
 import { readdir, stat, mkdir, writeFile, readFile, unlink } from 'node:fs/promises';
@@ -17,7 +17,7 @@ const PUBLISHED_FILENAME_RE = /^[0-9]{8}T[0-9]{6}-[a-z0-9-]+\.epub$/;
 
 // Only these may appear as a path segment — guards against path traversal via
 // the `source` value the same way PUBLISHED_FILENAME_RE guards `filename`.
-const SOURCES = ['decorrespondent', 'bd', 'calibre'];
+const SOURCES = ['decorrespondent', 'calibre'];
 function safeSource(source) {
   return SOURCES.includes(source) ? source : 'decorrespondent';
 }
@@ -96,15 +96,4 @@ export async function deletePublished(filename, source = 'decorrespondent') {
   await unlink(join(dir, filename)).catch(() => {});
   await unlink(sidecarPath(dir, filename)).catch(() => {});
   return true;
-}
-
-// Wipe every published EPUB (+ sidecar) for one source — used by the nightly
-// BD-clear job (scheduler.js): bd.nl articles are daily news, so unlike De
-// Correspondent's shelf they shouldn't accumulate indefinitely. Returns the
-// .epub filenames removed.
-export async function clearPublished(source) {
-  const dir = await ensurePublishedDir(source);
-  const names = await readdir(dir);
-  await Promise.all(names.map((n) => unlink(join(dir, n)).catch(() => {})));
-  return names.filter((n) => PUBLISHED_FILENAME_RE.test(n));
 }

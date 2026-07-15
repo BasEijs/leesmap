@@ -44,13 +44,6 @@ export function rootCatalog() {
     <link rel="subsection" href="/opds/published/decorrespondent" type="application/atom+xml;profile=opds-catalog"/>
   </entry>
   <entry>
-    <title>Gepubliceerd — Brabants Dagblad</title>
-    <id>urn:leesmap:published:bd</id>
-    <updated>${esc(now)}</updated>
-    <content type="text">Artikelen verstuurd via de Brabants Dagblad-extensie.</content>
-    <link rel="subsection" href="/opds/published/bd" type="application/atom+xml;profile=opds-catalog"/>
-  </entry>
-  <entry>
     <title>Gepubliceerd — Calibre-Web</title>
     <id>urn:leesmap:published:calibre</id>
     <updated>${esc(now)}</updated>
@@ -93,14 +86,13 @@ export function digestsFeed(digests) {
 
 const SOURCE_LABELS = {
   decorrespondent: 'Gepubliceerd — De Correspondent',
-  bd: 'Gepubliceerd — Brabants Dagblad',
   calibre: 'Gepubliceerd — Calibre-Web',
 };
 
 // Acquisition feed listing hand-published EPUBs for one source, newest first.
 // Titles come from whatever the user typed (or the auto-generated bundle
-// title, or the extracted BD article title) rather than being derived from
-// the filename/date like digestsFeed does.
+// title, or the Calibre-Web book title) rather than being derived from the
+// filename/date like digestsFeed does.
 export function publishedFeed(items, source = 'decorrespondent') {
   const now = new Date().toISOString();
   const href = `/opds/published/${source}`;

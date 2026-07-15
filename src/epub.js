@@ -71,8 +71,8 @@ async function render(options, chapters) {
 }
 
 // One article -> one EPUB. `chapter.publisher`/`chapter.source` let a non-De
-// Correspondent source (e.g. Brabants Dagblad, see bd-article.js) brand its
-// own cover/filename instead of defaulting to De Correspondent everywhere.
+// Correspondent source brand its own cover/filename instead of defaulting to
+// De Correspondent everywhere.
 export async function buildSingle(chapter) {
   const publisher = chapter.publisher || 'De Correspondent';
   const prefix = chapter.source || 'dc';

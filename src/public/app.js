@@ -58,7 +58,6 @@ async function loadConfig() {
   $('#digest-hour').value = String(Number.isInteger(c.digestHour) ? c.digestHour : 3);
   state.lastDigestRun = c.lastDigestRun;
   renderDigestDetail();
-  $('#bd-clear-hour').value = String(Number.isInteger(c.bdClearHour) ? c.bdClearHour : 4);
   state.adminRequired = Boolean(c.adminRequired);
   state.pocketbookConfigured = Boolean(c.pocketbookConfigured);
   $('#btn-pocketbook').title = state.pocketbookConfigured
@@ -833,11 +832,6 @@ $('#digest-enabled').onchange = async () => {
 $('#digest-hour').onchange = async () => {
   await saveSettings({ digestHour: Number($('#digest-hour').value) });
   renderDigestDetail();
-};
-for (let h = 0; h < 24; h++) $('#bd-clear-hour').append(new Option(String(h).padStart(2, '0') + ':00', String(h)));
-$('#bd-clear-hour').onchange = async () => {
-  await saveSettings({ bdClearHour: Number($('#bd-clear-hour').value) });
-  toast('BD-wistijd ingesteld op ' + $('#bd-clear-hour').value.padStart(2, '0') + ':00.');
 };
 $('#pocketbook-nightly-enabled').onchange = async () => {
   const enabled = $('#pocketbook-nightly-enabled').checked;
