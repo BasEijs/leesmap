@@ -44,6 +44,12 @@ services:
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASS: ${SMTP_PASS:-}
       SMTP_FROM: ${SMTP_FROM:-}
+      # Second Send-to-PocketBook device (Marieke's reader). Its own sender
+      # mailbox — see .env.example for why it can't reuse SMTP_USER/SMTP_PASS.
+      POCKETBOOK_EMAIL_MARIEKE: ${POCKETBOOK_EMAIL_MARIEKE:-}
+      SMTP_USER_MARIEKE: ${SMTP_USER_MARIEKE:-}
+      SMTP_PASS_MARIEKE: ${SMTP_PASS_MARIEKE:-}
+      SMTP_FROM_MARIEKE: ${SMTP_FROM_MARIEKE:-}
     volumes:
       # A Docker-managed named volume (not a host bind mount). Docker initialises
       # it from the image, where /data is owned by the container's `node` user,

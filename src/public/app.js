@@ -85,7 +85,7 @@ async function loadConfig() {
 
 // ---------- Admin gate ----------
 // Guards instellingen + Extra opties (Verstuur naar X4 / Publiceer naar OPDS /
-// Verstuur naar Pocketbook) so the app can be shared without letting someone
+// Send to Pocketbook) so the app can be shared without letting someone
 // reconfigure it or trigger a send/publish by accident. A cached-but-stale
 // password (server restarted with a new one) is handled by clearing the cache
 // and re-prompting on 401.
@@ -687,14 +687,14 @@ function renderCalibreResults(books) {
       if (state.pocketbookConfigured) {
         const pb = document.createElement('button');
         pb.className = 'cal-menu-item';
-        pb.textContent = 'Send to Pocketbook';
+        pb.textContent = 'Send to Pocketbook Bas';
         pb.onclick = (e) => { e.stopPropagation(); pocketbookCalibre(b, pb); };
         menu.append(pb);
       }
       if (state.pocketbookConfiguredMarieke) {
         const pbM = document.createElement('button');
         pbM.className = 'cal-menu-item';
-        pbM.textContent = 'Send to Pocketbook (Marieke)';
+        pbM.textContent = 'Send to Pocketbook Marieke';
         pbM.onclick = (e) => { e.stopPropagation(); pocketbookCalibreMarieke(b, pbM); };
         menu.append(pbM);
       }
@@ -761,7 +761,7 @@ async function pocketbookCalibre(book, btn) {
     toast(`"${book.title}" naar Pocketbook.`);
   } catch (err) {
     btn.disabled = false;
-    btn.textContent = 'Send to Pocketbook';
+    btn.textContent = 'Send to Pocketbook Bas';
     toast('Versturen naar Pocketbook mislukt: ' + err.message);
   }
 }
@@ -782,7 +782,7 @@ async function pocketbookCalibreMarieke(book, btn) {
     toast(`"${book.title}" naar Pocketbook (Marieke).`);
   } catch (err) {
     btn.disabled = false;
-    btn.textContent = 'Send to Pocketbook (Marieke)';
+    btn.textContent = 'Send to Pocketbook Marieke';
     toast('Versturen naar Pocketbook (Marieke) mislukt: ' + err.message);
   }
 }
