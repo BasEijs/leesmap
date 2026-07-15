@@ -635,7 +635,7 @@ function renderCalibreResults(books) {
     actions.className = 'cal-actions';
     const btn = document.createElement('button');
     btn.className = 'secondary cal-pub';
-    btn.textContent = 'Publiceer OPDS';
+    btn.textContent = 'Publiceer';
     btn.onclick = () => publishCalibre(b, btn);
     actions.append(btn);
     // Secondary actions (currently just Pocketbook) live behind a ⋯ overflow
@@ -693,7 +693,7 @@ async function publishCalibre(book, btn) {
     toast(`"${book.title}" op de OPDS-plank.`);
   } catch (err) {
     btn.disabled = false;
-    btn.textContent = 'Publiceer OPDS';
+    btn.textContent = 'Publiceer';
     toast('Publiceren mislukt: ' + err.message);
   }
 }
