@@ -9,6 +9,7 @@ const state = {
   correspondents: [], activeCorrs: new Set(), generalActive: false,
   lastDigestRun: null,
   pocketbookConfigured: false,
+  calibreConfigured: false,
   // Admin gate: adminRequired comes from the server (ADMIN_PASSWORD set or
   // not); adminPw is cached in sessionStorage once verified, so it survives
   // page reloads within a tab but not across browser restarts.
@@ -68,6 +69,8 @@ async function loadConfig() {
   $('#pocketbook-nightly-detail').textContent = state.pocketbookConfigured
     ? 'Mailt dezelfde nachtelijke digest ook naar het Send-to-PocketBook-adres.'
     : 'Niet geconfigureerd: zet POCKETBOOK_EMAIL/SMTP_* in .env.';
+  state.calibreConfigured = Boolean(c.calibreConfigured);
+  $('#btn-calibre').hidden = !state.calibreConfigured;
   updateCount();
 }
 
@@ -581,6 +584,113 @@ async function sendPocketbook() {
   }
 }
 
+// ---------- Calibre-Web boekenkast ----------
+// Browse the Calibre-Web library over its OPDS feed and publish a chosen book
+// straight onto leesmap's own "Gepubliceerd — Calibre-Web" OPDS shelf, so the
+// reader/phone pulls it in wirelessly — no download-and-cable step. The whole
+// view is admin-gated (the /api/calibre/* routes are), matching the other
+// send/publish actions.
+function openCalibre(open) {
+  $('#calibre-drawer').hidden = !open;
+  $('#scrim').hidden = !open;
+  if (open) {
+    loadCalibrePublished();
+    if (!$('#cal-results').childElementCount) searchCalibre();
+  }
+}
+
+async function searchCalibre() {
+  const q = $('#cal-q').value.trim();
+  const empty = $('#cal-empty');
+  empty.hidden = false;
+  empty.textContent = 'Zoeken…';
+  $('#cal-results').innerHTML = '';
+  try {
+    const res = await adminFetch('api/calibre/books?q=' + encodeURIComponent(q));
+    const r = await res.json();
+    if (!res.ok) throw new Error(r.error || 'Zoeken mislukt');
+    renderCalibreResults(r.books || []);
+  } catch (err) {
+    empty.hidden = false;
+    empty.textContent = 'Kon Calibre-Web niet bereiken: ' + err.message;
+  }
+}
+
+function renderCalibreResults(books) {
+  const ul = $('#cal-results');
+  ul.innerHTML = '';
+  const empty = $('#cal-empty');
+  empty.hidden = books.length > 0;
+  if (!books.length) { empty.textContent = 'Geen boeken gevonden.'; return; }
+  for (const b of books) {
+    const li = document.createElement('li');
+    li.className = 'cal-card';
+    const cover = b.coverHref
+      ? `<img class="cal-cover" src="api/calibre/cover?u=${encodeURIComponent(b.coverHref)}" alt="" loading="lazy" />`
+      : `<span class="cal-cover"></span>`;
+    const meta = document.createElement('div');
+    meta.className = 'cal-meta';
+    meta.innerHTML = `<div class="cal-title">${b.title}</div>` +
+      (b.author ? `<div class="cal-author">${b.author}</div>` : '');
+    const btn = document.createElement('button');
+    btn.className = 'secondary cal-pub';
+    btn.textContent = 'Publiceer';
+    btn.onclick = () => publishCalibre(b, btn);
+    li.innerHTML = cover;
+    li.append(meta, btn);
+    ul.append(li);
+  }
+}
+
+async function publishCalibre(book, btn) {
+  btn.disabled = true;
+  btn.textContent = 'Bezig…';
+  try {
+    const res = await adminFetch('api/calibre/publish', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ epubHref: book.epubHref, title: book.title }),
+    });
+    const r = await res.json();
+    if (!res.ok) throw new Error(r.error || 'Publiceren mislukt');
+    btn.textContent = 'Gepubliceerd';
+    btn.dataset.done = '1';
+    renderCalibrePublished(r.items || []);
+    toast(`"${book.title}" op de OPDS-plank.`);
+  } catch (err) {
+    btn.disabled = false;
+    btn.textContent = 'Publiceer';
+    toast('Publiceren mislukt: ' + err.message);
+  }
+}
+
+async function loadCalibrePublished() {
+  try {
+    const r = await (await fetch('api/calibre/published')).json();
+    renderCalibrePublished(r.items || []);
+  } catch {
+    renderCalibrePublished([]);
+  }
+}
+
+function renderCalibrePublished(items) {
+  const ul = $('#cal-published-list');
+  ul.innerHTML = '';
+  $('#cal-published-empty').hidden = items.length > 0;
+  for (const it of items) {
+    const li = document.createElement('li');
+    li.innerHTML = `<span>${it.title}<br><small class="muted">${fmtDate(it.publishedAt)}</small></span>`;
+    const b = document.createElement('button');
+    b.textContent = 'verwijder';
+    b.onclick = async () => {
+      const r = await (await adminFetch('api/calibre/published/' + encodeURIComponent(it.filename), { method: 'DELETE' })).json();
+      renderCalibrePublished(r.items || []);
+    };
+    li.append(b);
+    ul.append(li);
+  }
+}
+
 // ---------- Quick bundle: yesterday's main-feed articles ----------
 // Independent of whatever feed/selection is currently on screen: always pulls
 // the primary feed fresh and filters to the calendar day before today (in the
@@ -709,6 +819,13 @@ $('#btn-settings').onclick = async () => {
   openDrawer(true);
 };
 $('#btn-close').onclick = () => openDrawer(false);
+$('#btn-calibre').onclick = async () => {
+  if (!(await ensureAdmin())) return;
+  openCalibre(true);
+};
+$('#cal-close').onclick = () => openCalibre(false);
+$('#cal-search').onclick = searchCalibre;
+$('#cal-q').addEventListener('keydown', (e) => { if (e.key === 'Enter') searchCalibre(); });
 // "Extra opties" (Verstuur naar X4 / Publiceer naar OPDS) is gated the same
 // way: intercept the click that would open it and only let it through once
 // ensureAdmin() resolves. Collapsing is always allowed.
@@ -718,7 +835,7 @@ $('#extra-summary').addEventListener('click', (e) => {
   e.preventDefault();
   ensureAdmin().then((ok) => { if (ok) details.open = true; });
 });
-$('#scrim').onclick = () => openDrawer(false);
+$('#scrim').onclick = () => { openDrawer(false); openCalibre(false); };
 $('#chip-device').onclick = () => probeDevice();
 $('#btn-test').onclick = async () => {
   const ip = $('#device-ip').value.trim();

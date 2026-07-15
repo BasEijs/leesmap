@@ -50,6 +50,13 @@ export function rootCatalog() {
     <content type="text">Artikelen verstuurd via de Brabants Dagblad-extensie.</content>
     <link rel="subsection" href="/opds/published/bd" type="application/atom+xml;profile=opds-catalog"/>
   </entry>
+  <entry>
+    <title>Gepubliceerd — Calibre-Web</title>
+    <id>urn:leesmap:published:calibre</id>
+    <updated>${esc(now)}</updated>
+    <content type="text">Boeken gepubliceerd vanuit je Calibre-Web-bibliotheek.</content>
+    <link rel="subsection" href="/opds/published/calibre" type="application/atom+xml;profile=opds-catalog"/>
+  </entry>
 </feed>
 `;
 }
@@ -87,6 +94,7 @@ export function digestsFeed(digests) {
 const SOURCE_LABELS = {
   decorrespondent: 'Gepubliceerd — De Correspondent',
   bd: 'Gepubliceerd — Brabants Dagblad',
+  calibre: 'Gepubliceerd — Calibre-Web',
 };
 
 // Acquisition feed listing hand-published EPUBs for one source, newest first.

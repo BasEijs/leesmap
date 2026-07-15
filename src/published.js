@@ -17,7 +17,7 @@ const PUBLISHED_FILENAME_RE = /^[0-9]{8}T[0-9]{6}-[a-z0-9-]+\.epub$/;
 
 // Only these may appear as a path segment — guards against path traversal via
 // the `source` value the same way PUBLISHED_FILENAME_RE guards `filename`.
-const SOURCES = ['decorrespondent', 'bd'];
+const SOURCES = ['decorrespondent', 'bd', 'calibre'];
 function safeSource(source) {
   return SOURCES.includes(source) ? source : 'decorrespondent';
 }

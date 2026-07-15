@@ -281,6 +281,23 @@ span.corr-av-sm { display: grid; place-items: center; font-size: 0.8rem; }
   font-family: var(--sans); text-transform: none; letter-spacing: 0; font-size: 0.9rem; }
 .saved-feeds button { background: none; border: none; color: var(--bad); text-decoration: underline; }
 
+/* ---------- Calibre-Web boekenkast ---------- */
+.cal-grid { list-style: none; margin: 0.4rem 0 1rem; padding: 0; display: grid; gap: 0.7rem; }
+.cal-card {
+  display: grid; grid-template-columns: 46px 1fr auto; gap: 0.7rem; align-items: center;
+  padding: 0.5rem 0; border-top: 1px solid var(--rule);
+}
+.cal-cover {
+  width: 46px; height: 66px; object-fit: cover; border-radius: 4px;
+  background: var(--paper-2); border: 1px solid var(--rule);
+}
+.cal-meta { min-width: 0; font-family: var(--sans); }
+.cal-title { font-weight: 600; font-size: 0.92rem; color: var(--ink);
+  overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.cal-author { font-size: 0.8rem; color: var(--ink-2); margin-top: 0.15rem; }
+.cal-pub { white-space: nowrap; }
+.cal-pub[data-done="1"] { color: var(--ok); border-color: var(--ok); }
+
 .toast {
   position: fixed; bottom: 1rem; left: 50%; transform: translateX(-50%);
   background: var(--ink); color: var(--paper); padding: 0.6rem 1rem; border-radius: 8px;

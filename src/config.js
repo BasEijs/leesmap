@@ -32,6 +32,13 @@ export const env = {
   // pull, PocketBook Cloud downloads to the device automatically once WiFi is
   // on — no on-device browsing needed. Unset POCKETBOOK_EMAIL to skip this
   // channel entirely; OPDS keeps working either way.
+  // Calibre-Web: browse your library and publish a chosen book to its own
+  // OPDS shelf (see calibre.js). The URL is the Calibre-Web root (no /opds
+  // suffix). USER/PASS are optional — only needed if the OPDS feed isn't
+  // anonymously readable; when set they're sent as HTTP Basic Auth.
+  calibreWebUrl: (process.env.CALIBRE_WEB_URL || '').replace(/\/+$/, ''),
+  calibreWebUser: process.env.CALIBRE_WEB_USER || '',
+  calibreWebPass: process.env.CALIBRE_WEB_PASS || '',
   pocketbookEmail: process.env.POCKETBOOK_EMAIL || '',
   smtpHost: process.env.SMTP_HOST || '',
   smtpPort: Number(process.env.SMTP_PORT) || 587,

@@ -148,7 +148,11 @@ src/
   scheduler.js nightly digest generator (node-cron)
   digests.js  disk store for generated digest EPUBs
   published.js disk store for hand-published EPUBs (Publiceer naar OPDS),
-              split by source (published/decorrespondent/, published/bd/)
+              split by source (published/decorrespondent/, published/bd/,
+              published/calibre/)
+  calibre.js  reads a Calibre-Web instance's own OPDS feed (search + recent),
+              pulls a chosen book's EPUB through and republishes it to the
+              "Gepubliceerd — Calibre-Web" shelf — the "boekenkast" view
   opds.js     OPDS (Atom) catalog feeds for CrossPoint's OPDS client, one
               nav entry + acquisition feed per source
   bd-article.js Readability extraction for Brabants Dagblad HTML handed over
@@ -175,6 +179,30 @@ See `extension/README.md` to install it. Once configured, articles you send
 land on the **Gepubliceerd — Brabants Dagblad** OPDS shelf (`/opds/published/bd`),
 separate from De Correspondent's shelf — same OPDS root, one subsection per
 source, no server-side BD credentials anywhere.
+
+## Calibre-Web (publish books from your library)
+
+If you already run a **Calibre-Web** instance, this turns the download-and-cable
+dance into a wireless pull. Calibre-Web already *is* an OPDS server; leesmap reads
+its feed, lets you pick a book in the **boekenkast** view, then copies that one
+EPUB onto its own **Gepubliceerd — Calibre-Web** shelf (`/opds/published/calibre`)
+— so the reader (or your phone) pulls it in on the next OPDS sync. One OPDS URL for
+everything, no browser extension, no cable.
+
+1. Set `CALIBRE_WEB_URL` in `.env` to your Calibre-Web root (e.g.
+   `https://books.example.com`, **without** `/opds`). The **boekenkast** chip in
+   the header appears once it's set.
+2. If your OPDS feed needs a login (anonymous browsing off), also set
+   `CALIBRE_WEB_USER` / `CALIBRE_WEB_PASS` — sent as HTTP Basic Auth. Leave them
+   blank if `/opds` is publicly readable.
+3. Open **boekenkast**, search (empty = most recently added), and hit
+   **Publiceer** on a book. It lands on the Calibre-Web shelf, alongside the
+   De Correspondent and BD ones.
+
+On iPhone there's nothing extra server-side: add the single leesmap OPDS URL to
+any iOS OPDS reader app (KyBook 3, Yomu, Chunky…) and the shelf shows up there
+too. Unlike the BD shelf, the Calibre-Web shelf isn't nightly-cleared — books
+stay until you remove them.
 
 ## Send-to-PocketBook (e.g. a PocketBook Verse Pro)
 

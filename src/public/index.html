@@ -18,6 +18,7 @@
       <span class="dot" id="dot-device"></span><span id="lbl-device">reader ?</span>
     </button>
     <span class="chip" id="chip-cookie"><span class="dot" id="dot-cookie"></span>cookie</span>
+    <button class="chip ghost" id="btn-calibre" hidden>boekenkast</button>
     <button class="chip ghost" id="btn-settings">instellingen</button>
   </div>
 </header>
@@ -148,6 +149,27 @@
   </div>
 
   <p class="muted small">De sessie-cookie en je persoonlijke feed staan in de server-omgeving (env), niet hier — houd deze web-UI op je LAN of Tailscale.</p>
+</div>
+
+<!-- CALIBRE-WEB DRAWER -->
+<div class="drawer" id="calibre-drawer" hidden aria-label="Boekenkast">
+  <div class="drawer-head"><h2>Boekenkast</h2><button class="link" id="cal-close">sluit</button></div>
+  <p class="muted small" style="text-transform:none;letter-spacing:0;">Zoek in je Calibre-Web-bibliotheek en publiceer een boek naar de OPDS-plank, zodat je reader of telefoon het draadloos ophaalt.</p>
+
+  <div class="field">Zoeken
+    <div class="row">
+      <input id="cal-q" type="search" placeholder="titel of auteur — leeg = laatst toegevoegd" />
+      <button id="cal-search">Zoek</button>
+    </div>
+  </div>
+
+  <ul class="cal-grid" id="cal-results"></ul>
+  <p class="empty" id="cal-empty">Zoek een boek, of laat leeg voor de nieuwste.</p>
+
+  <div class="field">Op de OPDS-plank
+    <ul class="saved-feeds" id="cal-published-list"></ul>
+    <p class="empty" id="cal-published-empty" hidden>Nog niets gepubliceerd.</p>
+  </div>
 </div>
 
 <script src="app.js"></script>

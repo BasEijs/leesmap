@@ -16,6 +16,7 @@ import { listPublished, publishedFilePath, savePublished, deletePublished } from
 import { rootCatalog, digestsFeed, publishedFeed } from './opds.js';
 import { startScheduler } from './scheduler.js';
 import { isConfigured as pocketbookConfigured, sendToPocketbook } from './pocketbook.js';
+import { isConfigured as calibreConfigured, searchBooks, fetchEpub, fetchCover } from './calibre.js';
 
 // A "bundle" of one article is just that article with extra ceremony (author-led
 // filename, selection-style cover). Treat a single URL as 'single' regardless of
@@ -87,6 +88,7 @@ app.get('/api/config', (req, res) => {
     pocketbookConfigured: pocketbookConfigured(),
     pocketbookNightlyEnabled: s.pocketbookNightlyEnabled,
     bdClearHour: s.bdClearHour,
+    calibreConfigured: calibreConfigured(),
   });
 });
 
@@ -247,6 +249,52 @@ app.post('/api/bd/import', requireAdmin, async (req, res) => {
   } catch (err) {
     res.status(err.status || 500).json({ error: err.message });
   }
+});
+
+// --- Calibre-Web: browse the library and publish a book to its OPDS shelf ---
+// searchBooks reads Calibre-Web's own OPDS feed; publish pulls the chosen
+// book's EPUB through and drops it on the "Gepubliceerd — Calibre-Web" shelf
+// (source 'calibre'), reusing the same store/feed as every other source.
+app.get('/api/calibre/books', requireAdmin, async (req, res) => {
+  try {
+    res.json({ books: await searchBooks(req.query.q) });
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message });
+  }
+});
+
+// Cover proxy: streams a Calibre-Web cover through leesmap so the UI shows it
+// regardless of mixed-content or Basic Auth on the Calibre-Web side.
+app.get('/api/calibre/cover', requireAdmin, async (req, res) => {
+  try {
+    const { buffer, contentType } = await fetchCover(req.query.u || '');
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Cache-Control', 'private, max-age=86400');
+    res.end(buffer);
+  } catch (err) {
+    res.status(err.status || 500).end();
+  }
+});
+
+app.post('/api/calibre/publish', requireAdmin, async (req, res) => {
+  const { epubHref, title } = req.body || {};
+  if (!epubHref) return res.status(400).json({ error: 'Geen boek geselecteerd.' });
+  try {
+    const buffer = await fetchEpub(epubHref);
+    const record = await savePublished(buffer, title || 'Boek', 'calibre');
+    res.json({ ok: true, items: await listPublished('calibre'), published: record });
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message });
+  }
+});
+
+app.get('/api/calibre/published', async (req, res) => {
+  res.json({ items: await listPublished('calibre') });
+});
+
+app.delete('/api/calibre/published/:filename', requireAdmin, async (req, res) => {
+  await deletePublished(req.params.filename, 'calibre');
+  res.json({ ok: true, items: await listPublished('calibre') });
 });
 
 // --- Email a hand-picked selection to the Send-to-PocketBook address ---
